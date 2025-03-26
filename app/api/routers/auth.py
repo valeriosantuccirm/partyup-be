@@ -11,7 +11,11 @@ from app.database.models.psql.user import User
 from app.database.session import psql_session_manager
 from app.datamodels.schemas.auth import FCMToken, FirebaseUser, Token
 from app.datamodels.schemas.request import UserCreateBase
-from app.depends.depends import get_current_user, get_es_query_service, get_firebase_user
+from app.depends.depends import (
+    get_current_user,
+    get_es_query_service,
+    get_firebase_user,
+)
 
 router = APIRouter(prefix="/auth")
 

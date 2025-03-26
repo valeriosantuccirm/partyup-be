@@ -44,10 +44,14 @@ async def event_media_ws(
     await websocket.accept()
     try:
         while True:
-            message: Dict[str, Any] | None = await pubsub.get_message(ignore_subscribe_messages=True)
+            message: Dict[str, Any] | None = await pubsub.get_message(
+                ignore_subscribe_messages=True
+            )
             if message and message["type"] == "message":
                 await websocket.send_text(data=message["data"])
             await asyncio.sleep(delay=0.1)  # Prevents high CPU usage
     except WebSocketDisconnect:
-        redis_client.redis.srem(redis_set_key, str("fd04f528-d228-4d45-9e5c-74c10b7c6402"))
+        redis_client.redis.srem(
+            redis_set_key, str("fd04f528-d228-4d45-9e5c-74c10b7c6402")
+        )
         await pubsub.unsubscribe(f"event_media:{event_guid}")

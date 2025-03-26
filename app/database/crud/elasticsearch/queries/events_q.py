@@ -153,7 +153,12 @@ def search_events(
                     {
                         "multi_match": {
                             "query": user_input,
-                            "fields": ["title^3", "description^2", "tags^2", "location_name"],
+                            "fields": [
+                                "title^3",
+                                "description^2",
+                                "tags^2",
+                                "location_name",
+                            ],
                             "type": "best_fields",
                             "fuzziness": "AUTO",
                         }

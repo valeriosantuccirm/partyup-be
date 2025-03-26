@@ -8,15 +8,27 @@ from starlette import status
 
 from app.api.exceptions.http_exc import APIException, DBException
 from app.config import settings
-from app.constants import DB_API_CONTEXT, DB_ES_DB_CONTEXT, DB_PSQL_DB_CONTEXT, PUB_EVENT_API_CONTEXT
+from app.constants import (
+    DB_API_CONTEXT,
+    DB_ES_DB_CONTEXT,
+    DB_PSQL_DB_CONTEXT,
+    PUB_EVENT_API_CONTEXT,
+)
 from app.core import common, fcm
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import common_q, events_q
 from app.database.crud.psql.session_manager import PSQLSessionManager
 from app.database.models.elasticsearch.es_event import ESEvent
-from app.database.models.elasticsearch.es_event_attendee import ESEventAttendee, ESEventAttendeeBase
+from app.database.models.elasticsearch.es_event_attendee import (
+    ESEventAttendee,
+    ESEventAttendeeBase,
+)
 from app.database.models.elasticsearch.es_media import ESMediaBase
-from app.database.models.enums.event import AttendeeType, EventAttendeeStatus, EventStatus
+from app.database.models.enums.event import (
+    AttendeeType,
+    EventAttendeeStatus,
+    EventStatus,
+)
 from app.database.models.enums.media import MediaType
 from app.database.models.psql.event import Event
 from app.database.models.psql.event_attendee import EventAttendee
@@ -150,7 +162,9 @@ async def upload_user_event_media(
         "media_type": MediaType.PHOTO.value,
     }
     redis_client = await get_redis_client()
-    await redis_client.redis.publish(channel=redis_channel, message=json.dumps(redis_message))
+    await redis_client.redis.publish(
+        channel=redis_channel, message=json.dumps(redis_message)
+    )
     return psql_media
 
 

@@ -53,7 +53,11 @@ def manage_transaction(func: Callable) -> Any:
             if conn_var in kwargs:
                 _session = kwargs[conn_var]
                 break
-        _session = _session if _session and isinstance(_session, AsyncSession) else AsyncSession()
+        _session = (
+            _session
+            if _session and isinstance(_session, AsyncSession)
+            else AsyncSession()
+        )
         try:
             async with _session.begin():
                 rv: Any = await func(*args, **kwargs)
@@ -137,7 +141,9 @@ def cache_result(key: str, ttl: int) -> Any:
                 func_result: List[User] = await func(*args, **kwargs)
 
                 # parsing sqlalchemy ORM instances to pydantic models
-                models: List[UserResponseModel] = [UserResponseModel(**user.model_dump()) for user in func_result]
+                models: List[UserResponseModel] = [
+                    UserResponseModel(**user.model_dump()) for user in func_result
+                ]
                 # cache the result
                 redis.setex(
                     name=cache_key,
@@ -149,7 +155,9 @@ def cache_result(key: str, ttl: int) -> Any:
                 raise e
             except Exception as e:
                 logger.error(traceback.format_exc())
-                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+                )
 
         return wrapper
 

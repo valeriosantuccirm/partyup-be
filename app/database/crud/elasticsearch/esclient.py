@@ -72,7 +72,9 @@ class ElasticsearchClient(ElasticsearchMeta):
             index=index,
             body=query,
         )
-        return [{"id": hit["_id"], **hit["_source"]} for hit in response["hits"]["hits"]]
+        return [
+            {"id": hit["_id"], **hit["_source"]} for hit in response["hits"]["hits"]
+        ]
 
     @ElasticsearchMeta.exc_handler
     async def __msearch(
@@ -138,10 +140,14 @@ class ElasticsearchClient(ElasticsearchMeta):
         )
 
     @overload
-    async def find(self, index: str, query: Dict[str, Any], model: Type[T]) -> List[T]: ...
+    async def find(
+        self, index: str, query: Dict[str, Any], model: Type[T]
+    ) -> List[T]: ...
 
     @overload
-    async def find(self, index: str, query: Dict[str, Any], model: Type[T], one: bool) -> T | None: ...
+    async def find(
+        self, index: str, query: Dict[str, Any], model: Type[T], one: bool
+    ) -> T | None: ...
 
     async def find(
         self,
@@ -152,7 +158,9 @@ class ElasticsearchClient(ElasticsearchMeta):
     ) -> List[T] | T | None:
         results: List[Dict[str, Any]] = await self.__search(index=index, query=query)
         instances = []
-        instances: List[T] = [model(**r) for r in results]  # TODO: use model_construct to boost performance
+        instances: List[T] = [
+            model(**r) for r in results
+        ]  # TODO: use model_construct to boost performance
         if one:
             return next(iter(instances), None)
         return instances

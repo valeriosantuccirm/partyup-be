@@ -52,19 +52,25 @@ class Event(SQLModel, table=True):
     description: StrictStr | None = Field(default=None, nullable=True)
     end_date: datetime | None = Field(default=None, nullable=True)
     followers_attendees_count: StrictInt = Field(default=0, nullable=False)
-    guid: UUID = Field(default_factory=uuid4, primary_key=True, unique=True, nullable=False)
+    guid: UUID = Field(
+        default_factory=uuid4, primary_key=True, unique=True, nullable=False
+    )
     hivers_count: StrictInt = Field(default=0, nullable=False)
     hivers_reserved_slots: StrictInt = Field(default=0, nullable=False)
     is_last_minute: StrictBool = Field(default=False, nullable=False)
     is_private: StrictBool = Field(default=False, nullable=False)
-    location: StrictStr = Field(default=..., sa_column=Geometry(geometry_type="POINT", srid=4326))
+    location: StrictStr = Field(
+        default=..., sa_column=Geometry(geometry_type="POINT", srid=4326)
+    )
     max_attendees: StrictInt = Field(default=0, nullable=False)
     min_donation: StrictFloat = Field(default=0.0, nullable=False)
     ponr: datetime | None = Field(default=None, nullable=True)
     public_attendees_count: StrictInt = Field(default=0, nullable=False)
     start_date: datetime = Field(default=..., nullable=False)
     status: EventStatus = Field(default=EventStatus.UPCOMING, nullable=False)
-    tags: Optional[List[str]] = Field(default_factory=list, sa_column=Column(ARRAY(item_type=String)))
+    tags: Optional[List[str]] = Field(
+        default_factory=list, sa_column=Column(ARRAY(item_type=String))
+    )
     title: StrictStr = Field(default=..., nullable=False)
     total_attendees_count: StrictInt = Field(default=0, nullable=False)
     total_donations: StrictFloat = Field(default=0.0, nullable=False)

@@ -13,7 +13,10 @@ from app.database.crud.elasticsearch.queries import common_q, users_q
 from app.database.crud.psql.session_manager import PSQLSessionManager
 from app.database.models.elasticsearch.es_hiver_request import ESHiverRequest
 from app.database.models.elasticsearch.es_user import ESUser
-from app.database.models.elasticsearch.es_user_hiver import ESUserHiverBase, ESUserHiverRelations
+from app.database.models.elasticsearch.es_user_hiver import (
+    ESUserHiverBase,
+    ESUserHiverRelations,
+)
 from app.database.models.enums.hiver import HiverRequestStatus
 from app.database.models.psql.hiver_request import HiverRequest
 from app.database.models.psql.user import User
@@ -61,7 +64,10 @@ async def respond_hiver_request(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Could not find hiver request in PSQL DB with guid '{hiver_request_guid}'",
         )
-    if psql_hiver_request.status in (HiverRequestStatus.ACCEPTED, HiverRequestStatus.DECLINED):
+    if psql_hiver_request.status in (
+        HiverRequestStatus.ACCEPTED,
+        HiverRequestStatus.DECLINED,
+    ):
         raise APIException(
             api_context=USER_HIVER_API_CONTEXT,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -92,7 +98,9 @@ async def respond_hiver_request(
             detail=f"Could not find hiver request in ES DB linked to PSQL guid '{hiver_request_guid}'",
         )
     # update status of hiver request
-    psql_hiver_request.status = HiverRequestStatus.ACCEPTED if accept else HiverRequestStatus.DECLINED
+    psql_hiver_request.status = (
+        HiverRequestStatus.ACCEPTED if accept else HiverRequestStatus.DECLINED
+    )
     # increase users hivers count if hiver request accepted
     if accept:
         es_sender: ESUser | None = await esclient.find(
@@ -158,7 +166,15 @@ async def get_user_linked_hivers(
     user: User,
     limit: int = 20,
     offset: int = 0,
-    fields: List[str] = ["username", "profile_image", "followers_count", "guid", "_id", "hivers_count", "full_name"],
+    fields: List[str] = [
+        "username",
+        "profile_image",
+        "followers_count",
+        "guid",
+        "_id",
+        "hivers_count",
+        "full_name",
+    ],
 ) -> PaginatedListedUser:
     hivers_relations_q: Dict[str, Any] = users_q.find_user_hivers(
         psql_user_guid=user.guid,
@@ -173,8 +189,16 @@ async def get_user_linked_hivers(
     )
     relations_guids = list(
         set(
-            [uh.hiver_guid for uh in user_hivers_relations if uh.hiver_guid != user.guid]
-            + [uh.user_guid for uh in user_hivers_relations if uh.user_guid != user.guid]
+            [
+                uh.hiver_guid
+                for uh in user_hivers_relations
+                if uh.hiver_guid != user.guid
+            ]
+            + [
+                uh.user_guid
+                for uh in user_hivers_relations
+                if uh.user_guid != user.guid
+            ]
         )
     )
     user_hivers_q: Dict[str, Any] = users_q.find_users(

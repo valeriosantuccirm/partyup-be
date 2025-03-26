@@ -18,7 +18,9 @@ class UserFollower(SQLModel, table=True):
     __tablename__: str = "user_follower"
 
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
-    guid: UUID = Field(default_factory=uuid4, nullable=False, primary_key=True, unique=True, index=True)
+    guid: UUID = Field(
+        default_factory=uuid4, nullable=False, primary_key=True, unique=True, index=True
+    )
 
     # FKs
     follower_guid: UUID = Field(foreign_key="user.guid", nullable=False, index=True)
