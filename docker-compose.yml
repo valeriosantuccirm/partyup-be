@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # FastAPI app
+  partyup:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_URI=postgresql+asyncpg://postgres:password@partyup_db:5432/partyup_db
+      # - SECRET_KEY
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_SECONDS=86400
+    depends_on:
+      - partyup_db
+      - redis
+      - prometheus
+      - elasticsearch
+    networks:
+      - app-network
+
+  # PostgreSQL database
+  partyup_db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: partyup_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    volumes:
+      - partyup_db_data:/var/lib/postgresql/data
+
+  # Redis cache
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  # Prometheus + Grafana monitoring
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - app-network
+
+  # CloudBeaver for DB access
+  cloudbeaver:
+    image: dbeaver/cloudbeaver:latest
+    restart: always
+    ports:
+      - "8978:8978"
+    volumes: 
+      - cloudbeaver:/opt/cloudbeaver/workspace
+    networks:
+      - app-network
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.1
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - app-network
+
+  # Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.17.1
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+
+networks:
+  app-network:
+
+volumes:
+  partyup_db_data:
+  cloudbeaver:
