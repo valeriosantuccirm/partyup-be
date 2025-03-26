@@ -60,7 +60,9 @@ async def get_user_hivers_requests(
     esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
     user: Annotated[User, Depends(dependency=admit_user)],
     mode: Annotated[Literal["sent", "received"], Query(default=...)],
-    status: Annotated[HiverRequestStatus, Query(default=...)] = HiverRequestStatus.PENDING,
+    status: Annotated[
+        HiverRequestStatus, Query(default=...)
+    ] = HiverRequestStatus.PENDING,
     limit: Annotated[int, Query(default=...)] = 20,
     offset: Annotated[int, Query(default=...)] = 0,
 ) -> List[ESHiverRequest]:

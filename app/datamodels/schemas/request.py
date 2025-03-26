@@ -168,7 +168,9 @@ class EventCreateExtendedRequest(EventCreateRequest):
     cover_image: UploadFile | None = Field(default=None)
 
     @field_validator("cover_image")
-    def validate_extension(cls, value: starletteUploadFile | None) -> starletteUploadFile | None:
+    def validate_extension(
+        cls, value: starletteUploadFile | None
+    ) -> starletteUploadFile | None:
         return validate_fileimage_extension(value=value)
 
 
@@ -219,5 +221,7 @@ class UserEventUpdateExtendedRequest(UserEventUpdateRequest):
     cover_image: UploadFile | None = Field(default=None)
 
     @field_validator("cover_image")
-    def validate_extension(cls, value: starletteUploadFile | None) -> starletteUploadFile | None:
+    def validate_extension(
+        cls, value: starletteUploadFile | None
+    ) -> starletteUploadFile | None:
         return validate_fileimage_extension(value=value)

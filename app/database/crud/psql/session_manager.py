@@ -145,7 +145,9 @@ class PSQLSessionManager(PSQLTransactionMeta):
         model: Type[T],
         clauses: Iterable[ColumnElement],
     ) -> int:
-        query: Select[Tuple[int]] = select(func.count()).select_from(model).where(or_(*clauses))
+        query: Select[Tuple[int]] = (
+            select(func.count()).select_from(model).where(or_(*clauses))
+        )
         result: Result[Tuple[int]] = await self.__exe(q=query)
         count: int | None = result.scalar()
         return count if count else 0

@@ -10,7 +10,15 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from sqlmodel import SQLModel
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routers import auth, events, maps, public_users, user, user_events, user_hivers
+from app.api.routers import (
+    auth,
+    events,
+    maps,
+    public_users,
+    user,
+    user_events,
+    user_hivers,
+)
 from app.database.crud.elasticsearch.esclient import ElasticsearchMeta
 from app.database.redis import redis_client
 from app.database.session import engine

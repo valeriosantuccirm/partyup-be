@@ -24,7 +24,9 @@ class APIException(HTTPException):
 
     def __init__(
         self,
-        api_context: Literal["user", "user-event", "auth", "pub-event", "user-follower", "user-hiver"],
+        api_context: Literal[
+            "user", "user-event", "auth", "pub-event", "user-follower", "user-hiver"
+        ],
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail: str = "Something went wrong",
         headers: Dict[str, Any] = {},

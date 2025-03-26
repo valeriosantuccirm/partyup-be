@@ -59,7 +59,11 @@ async def get_firebase_user(
             email=decoded_token["email"],
             email_verified=firebase_user.email_verified,
             access_token=token,
-            providers=[p.provider_id for p in firebase_user.provider_data if p.provider_id is not None],
+            providers=[
+                p.provider_id
+                for p in firebase_user.provider_data
+                if p.provider_id is not None
+            ],
             profile_picture_url=firebase_user.photo_url,
             full_name=firebase_user.display_name,
         )

@@ -64,7 +64,9 @@ class Email:
         and sends it using the `send_email` method with the appropriate template.
         """
         # Generate Firebase email verification link
-        verification_link: str = auth.generate_email_verification_link(email=self.user_email)
+        verification_link: str = auth.generate_email_verification_link(
+            email=self.user_email
+        )
 
         # Send email with the verification link
         await self.send_email(

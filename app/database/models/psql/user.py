@@ -66,19 +66,28 @@ class User(SQLModel, table=True):
     followers_count: StrictInt = Field(default=0, nullable=False)
     following_count: StrictInt = Field(default=0, nullable=False)
     full_name: StrictStr | None = Field(default=None, nullable=True)
-    guid: UUID = Field(default_factory=uuid4, nullable=False, primary_key=True, unique=True, index=True)
+    guid: UUID = Field(
+        default_factory=uuid4, nullable=False, primary_key=True, unique=True, index=True
+    )
     hivers_count: StrictInt = Field(default=0, nullable=False)
     is_active: StrictBool = Field(default=False, nullable=False)
     last_name: StrictStr | None = Field(default=None, nullable=True)
-    location: StrictStr = Field(default="41.8933203, 12.4829321", sa_column=Geometry(geometry_type="POINT", srid=4326))
+    location: StrictStr = Field(
+        default="41.8933203, 12.4829321",
+        sa_column=Geometry(geometry_type="POINT", srid=4326),
+    )
     location_name: StrictStr | None = Field(default=None, nullable=True)
     logout_timestamp: datetime | None = Field(default=None, nullable=True)
     popularity_score: StrictFloat = Field(default=0.0, nullable=False)
     posts_count: StrictInt = Field(default=0, nullable=False)
     profile_image: StrictStr | None = Field(default=None)
-    tags: Optional[List[str]] = Field(default_factory=list, sa_column=Column(ARRAY(item_type=String)))
+    tags: Optional[List[str]] = Field(
+        default_factory=list, sa_column=Column(ARRAY(item_type=String))
+    )
     updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
-    user_info_status: UserInfoStatus = Field(default=UserInfoStatus.INCOMPLETE, nullable=False)
+    user_info_status: UserInfoStatus = Field(
+        default=UserInfoStatus.INCOMPLETE, nullable=False
+    )
     username: StrictStr | None = Field(default=None, nullable=True, unique=True)
 
     # Relationships

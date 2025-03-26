@@ -94,7 +94,9 @@ async def update_existing_user(
         setattr(user, k, v)
     user.full_name = f"{user.first_name} {user.last_name}"
     user.user_info_status = (
-        UserInfoStatus.COMPLETE if await are_user_info_complete(user=user) else UserInfoStatus.INCOMPLETE
+        UserInfoStatus.COMPLETE
+        if await are_user_info_complete(user=user)
+        else UserInfoStatus.INCOMPLETE
     )
     user.updated_at = datetime.now()
     fileds: dict[str, Any] = {**es_user.model_dump(), **user.model_dump()}

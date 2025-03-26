@@ -94,7 +94,10 @@ async def upload_content_to_s3(
             ContentType=media_content.content_type,
             ACL="public-read",  # Make the image publicly accessible
         )
-        return f"https://{settings.AWS_BUCKET_NAME}.s3.amazonaws.com/{content_filename}", content_filename
+        return (
+            f"https://{settings.AWS_BUCKET_NAME}.s3.amazonaws.com/{content_filename}",
+            content_filename,
+        )
     except Exception as e:
         raise AWSException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

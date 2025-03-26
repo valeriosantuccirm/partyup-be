@@ -40,7 +40,9 @@ def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
 
     # Set the dynamic database URL into the alembic config
-    config.set_section_option(section="alembic", name="sqlalchemy.url", value=DATABASE_URL)
+    config.set_section_option(
+        section="alembic", name="sqlalchemy.url", value=DATABASE_URL
+    )
 
     # Retrieve the URL from the configuration
     url: str | None = config.get_main_option(name="sqlalchemy.url")

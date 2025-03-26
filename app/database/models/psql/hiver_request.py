@@ -24,4 +24,6 @@ class HiverRequest(SQLModel, table=True):
     guid: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
     receiver_guid: UUID = Field(foreign_key="user.guid", nullable=False, index=True)
     sender_guid: UUID = Field(foreign_key="user.guid", nullable=False, index=True)
-    status: HiverRequestStatus = Field(default=HiverRequestStatus.PENDING, nullable=False)
+    status: HiverRequestStatus = Field(
+        default=HiverRequestStatus.PENDING, nullable=False
+    )

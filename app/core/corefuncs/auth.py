@@ -98,7 +98,9 @@ async def signin_or_signup_user_by_google(
         model=User,
         criteria=(Column("email") == firebase_user.email,),
     )
-    if psql_user and (psql_user.auth_provider != OAuthProvider.GOOGLE or not psql_user.fcm_token):
+    if psql_user and (
+        psql_user.auth_provider != OAuthProvider.GOOGLE or not psql_user.fcm_token
+    ):
         psql_user.auth_provider = OAuthProvider.GOOGLE
         psql_user.profile_image = firebase_user.profile_picture_url
         psql_user.email_verified = True
@@ -156,7 +158,10 @@ async def refresh_user_fcm_token(
     fcm_token: FCMToken,
 ) -> None:
     await send_push_notification(
-        fcm_token=fcm_token.fcm_token, title="TEST", body="TEST SU TEST", image_url=user.profile_image
+        fcm_token=fcm_token.fcm_token,
+        title="TEST",
+        body="TEST SU TEST",
+        image_url=user.profile_image,
     )
     user.fcm_token = fcm_token.fcm_token
 

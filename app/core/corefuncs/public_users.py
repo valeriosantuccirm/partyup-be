@@ -6,7 +6,12 @@ from starlette import status
 
 from app.api.exceptions.http_exc import APIException, DBException
 from app.config import settings
-from app.constants import DB_API_CONTEXT, DB_ES_DB_CONTEXT, DB_PSQL_DB_CONTEXT, USER_HIVER_API_CONTEXT
+from app.constants import (
+    DB_API_CONTEXT,
+    DB_ES_DB_CONTEXT,
+    DB_PSQL_DB_CONTEXT,
+    USER_HIVER_API_CONTEXT,
+)
 from app.core import common, fcm
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import common_q, users_q
@@ -55,8 +60,12 @@ async def search_accounts(
         ],
     )
     hiver_hits, follower_hits = await esclient.msearch(mquery=mqs)
-    hiver_guids: Set[UUID] = {UUID(hex=hit["_source"]["user_guid"]) for hit in hiver_hits}
-    follower_guids: Set[UUID] = {UUID(hex=hit["_source"]["user_guid"]) for hit in follower_hits}
+    hiver_guids: Set[UUID] = {
+        UUID(hex=hit["_source"]["user_guid"]) for hit in hiver_hits
+    }
+    follower_guids: Set[UUID] = {
+        UUID(hex=hit["_source"]["user_guid"]) for hit in follower_hits
+    }
     q: Dict[str, Any] = users_q.find_public_users(
         user_bio=user.bio,
         user_guid=str(user.guid),
@@ -70,7 +79,15 @@ async def search_accounts(
         radius=radius,
         limit=limit,
         offset=offset,
-        source=["username", "profile_image", "followers_count", "guid", "_id", "hivers_count", "full_name"],
+        source=[
+            "username",
+            "profile_image",
+            "followers_count",
+            "guid",
+            "_id",
+            "hivers_count",
+            "full_name",
+        ],
     )
     ranked_accounts: List[ESListedUser] = await esclient.find(
         index=settings.ES_USERS_INDEX,
@@ -263,7 +280,10 @@ async def send_hiver_request(
         ),
     )
     # TODO: handle declined request!
-    if psql_hiver_request and psql_hiver_request.status in (HiverRequestStatus.PENDING, HiverRequestStatus.ACCEPTED):
+    if psql_hiver_request and psql_hiver_request.status in (
+        HiverRequestStatus.PENDING,
+        HiverRequestStatus.ACCEPTED,
+    ):
         raise APIException(
             api_context=USER_HIVER_API_CONTEXT,
             status_code=status.HTTP_400_BAD_REQUEST,
