@@ -102,6 +102,16 @@ services:
       - elasticsearch
     networks:
       - app-network
+  
+  # Celery
+  celery:
+    build: .
+    command: celery -A celery_app.celery_app worker --loglevel=info -Q partyup_user_hivers_queue
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
 
 networks:
   app-network:

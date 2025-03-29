@@ -24,6 +24,7 @@ from app.database.models.psql.hiver_request import HiverRequest
 from app.database.models.psql.user import User
 from app.database.models.psql.user_follower import UserFollower
 from app.datamodels.schemas.response import ESListedUser, PaginatedListedUser
+from celery_app.tasks.public_users_tasks import celery_follow_user
 
 
 async def search_accounts(
@@ -60,12 +61,8 @@ async def search_accounts(
         ],
     )
     hiver_hits, follower_hits = await esclient.msearch(mquery=mqs)
-    hiver_guids: Set[UUID] = {
-        UUID(hex=hit["_source"]["user_guid"]) for hit in hiver_hits
-    }
-    follower_guids: Set[UUID] = {
-        UUID(hex=hit["_source"]["user_guid"]) for hit in follower_hits
-    }
+    hiver_guids: Set[UUID] = {UUID(hex=hit["_source"]["user_guid"]) for hit in hiver_hits}
+    follower_guids: Set[UUID] = {UUID(hex=hit["_source"]["user_guid"]) for hit in follower_hits}
     q: Dict[str, Any] = users_q.find_public_users(
         user_bio=user.bio,
         user_guid=str(user.guid),
@@ -103,7 +100,6 @@ async def search_accounts(
 
 
 async def follow_user(
-    esclient: ElasticsearchClient,
     db_session: PSQLSessionManager,
     user: User,
     user_guid: UUID,
@@ -128,46 +124,18 @@ async def follow_user(
     )
     user.following_count += 1
     psql_followed_user.followers_count += 1
-    es_followed_user: ESUser | None = await esclient.find(
-        index=settings.ES_USERS_INDEX,
-        query=common_q.find_by_attr(guid=psql_followed_user.guid),
-        model=ESUser,
-        one=True,
+    celery_follow_user.apply_async(
+        args=(
+            user_follower.model_dump(),
+            psql_followed_user.guid,
+            user_guid,
+            user.username,
+            user.profile_image,
+            psql_followed_user.fcm_token,
+        ),
+        queue="partyup_public_users_queue",
+        priority=1,
     )
-    es_follower_user: ESUser | None = await esclient.find(
-        index=settings.ES_USERS_INDEX,
-        query=common_q.find_by_attr(guid=user.guid),
-        model=ESUser,
-        one=True,
-    )
-    if not es_followed_user or not es_follower_user:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Could not find users in ES DB with given criteria",
-        )
-    await esclient.add(
-        index=settings.ES_HIVER_REQUESTS_INDEX,
-        instance=ESHiverRequestBase(**user_follower.model_dump()),
-    )
-    await esclient.update(
-        index=settings.ES_USERS_INDEX,
-        doc_id=es_followed_user.id,
-        followers_count=es_followed_user.followers_count + 1,
-    )
-    await esclient.update(
-        index=settings.ES_USERS_INDEX,
-        doc_id=es_follower_user.id,
-        followers_count=es_follower_user.followers_count + 1,
-    )
-    if psql_followed_user.fcm_token:
-        await fcm.send_push_notification(
-            fcm_token=psql_followed_user.fcm_token,
-            title="You have a new follower",
-            body=f"{user.username} just started to follow you",
-            image_url=user.profile_image,
-        )
 
 
 async def unfollow_user(

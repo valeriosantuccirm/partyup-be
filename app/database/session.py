@@ -10,8 +10,10 @@ from app.database.crud.psql.session_manager import PSQLSessionManager
 engine: AsyncEngine = create_async_engine(url=settings.DB_URI, echo=True)
 
 async_session_factory = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)  # type: ignore[awaitable]
+    engine,  # type: ignore[awaitable]
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 async def psql_session_manager() -> AsyncGenerator[PSQLSessionManager, None]:

@@ -48,7 +48,7 @@ async def signup_user_by_email(
     user: User = User(
         email=user_form.email,
         email_verified=firebase_user.email_verified,
-        firebase_uid=firebase_user.uid,  # According to 'firebase_admin' doc this is never None
+        firebase_uid=firebase_user.uid,  # type: ignore[awaitable] - According to 'firebase_admin' doc this is never None
         is_active=True,
         user_info_status=UserInfoStatus.INCOMPLETE,
         auth_provider=OAuthProvider.EMAIL,
@@ -98,9 +98,7 @@ async def signin_or_signup_user_by_google(
         model=User,
         criteria=(Column("email") == firebase_user.email,),
     )
-    if psql_user and (
-        psql_user.auth_provider != OAuthProvider.GOOGLE or not psql_user.fcm_token
-    ):
+    if psql_user and (psql_user.auth_provider != OAuthProvider.GOOGLE or not psql_user.fcm_token):
         psql_user.auth_provider = OAuthProvider.GOOGLE
         psql_user.profile_image = firebase_user.profile_picture_url
         psql_user.email_verified = True
