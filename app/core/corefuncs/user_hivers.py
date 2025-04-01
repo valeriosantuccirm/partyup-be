@@ -82,7 +82,9 @@ async def respond_hiver_request(
             detail=f"Could not find user in PSQL DB with guid '{psql_hiver_request.sender_guid}'",
         )
     # update status of hiver request
-    psql_hiver_request.status = HiverRequestStatus.ACCEPTED if accept else HiverRequestStatus.DECLINED
+    psql_hiver_request.status = (
+        HiverRequestStatus.ACCEPTED if accept else HiverRequestStatus.DECLINED
+    )
     # increase users hivers count if hiver request accepted
     if accept:
         user.hivers_count += 1
@@ -137,8 +139,16 @@ async def get_user_linked_hivers(
     )
     relations_guids = list(
         set(
-            [uh.hiver_guid for uh in user_hivers_relations if uh.hiver_guid != user.guid]
-            + [uh.user_guid for uh in user_hivers_relations if uh.user_guid != user.guid]
+            [
+                uh.hiver_guid
+                for uh in user_hivers_relations
+                if uh.hiver_guid != user.guid
+            ]
+            + [
+                uh.user_guid
+                for uh in user_hivers_relations
+                if uh.user_guid != user.guid
+            ]
         )
     )
     user_hivers_q: Dict[str, Any] = users_q.find_users(

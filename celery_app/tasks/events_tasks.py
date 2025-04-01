@@ -13,7 +13,10 @@ from app.core import fcm
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import common_q
 from app.database.models.elasticsearch.es_event import ESEvent
-from app.database.models.elasticsearch.es_event_attendee import ESEventAttendee, ESEventAttendeeBase
+from app.database.models.elasticsearch.es_event_attendee import (
+    ESEventAttendee,
+    ESEventAttendeeBase,
+)
 from app.depends.depends import get_es_query_service
 from celery_app.celery_app import celery_app
 
@@ -39,7 +42,9 @@ def celery_join_public_event(
     creator_fcm_token: str | None = None,
 ) -> None:
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    esclient: ElasticsearchClient = loop.run_until_complete(future=get_es_query_service())
+    esclient: ElasticsearchClient = loop.run_until_complete(
+        future=get_es_query_service()
+    )
     es_event: ESEvent | None = loop.run_until_complete(
         future=esclient.find(
             index=settings.ES_EVENTS_INDEX,
@@ -92,7 +97,9 @@ def celery_revoke_join_event(
     creator_fcm_token: str | None = None,
 ) -> None:
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    esclient: ElasticsearchClient = loop.run_until_complete(future=get_es_query_service())
+    esclient: ElasticsearchClient = loop.run_until_complete(
+        future=get_es_query_service()
+    )
     es_event: ESEvent | None = loop.run_until_complete(
         future=esclient.find(
             index=settings.ES_EVENTS_INDEX,

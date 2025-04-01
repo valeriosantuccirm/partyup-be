@@ -38,7 +38,9 @@ def celery_respond_hiver_request(
     psql_sender_fcm_token: str | None = None,
 ) -> None:
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    esclient: ElasticsearchClient = loop.run_until_complete(future=get_es_query_service())
+    esclient: ElasticsearchClient = loop.run_until_complete(
+        future=get_es_query_service()
+    )
     es_hiver_request: ESHiverRequest | None = loop.run_until_complete(
         future=esclient.find(
             index=settings.ES_HIVER_REQUESTS_INDEX,

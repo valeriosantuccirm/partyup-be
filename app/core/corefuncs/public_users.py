@@ -23,7 +23,11 @@ from app.database.models.psql.hiver_request import HiverRequest
 from app.database.models.psql.user import User
 from app.database.models.psql.user_follower import UserFollower
 from app.datamodels.schemas.response import ESListedUser, PaginatedListedUser
-from celery_app.tasks.public_users_tasks import celery_follow_user, celery_send_hiver_request, celery_unfollow_user
+from celery_app.tasks.public_users_tasks import (
+    celery_follow_user,
+    celery_send_hiver_request,
+    celery_unfollow_user,
+)
 
 
 async def search_accounts(
@@ -60,8 +64,12 @@ async def search_accounts(
         ],
     )
     hiver_hits, follower_hits = await esclient.msearch(mquery=mqs)
-    hiver_guids: Set[UUID] = {UUID(hex=hit["_source"]["user_guid"]) for hit in hiver_hits}
-    follower_guids: Set[UUID] = {UUID(hex=hit["_source"]["user_guid"]) for hit in follower_hits}
+    hiver_guids: Set[UUID] = {
+        UUID(hex=hit["_source"]["user_guid"]) for hit in hiver_hits
+    }
+    follower_guids: Set[UUID] = {
+        UUID(hex=hit["_source"]["user_guid"]) for hit in follower_hits
+    }
     q: Dict[str, Any] = users_q.find_public_users(
         user_bio=user.bio,
         user_guid=str(user.guid),

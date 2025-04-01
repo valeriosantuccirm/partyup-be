@@ -147,7 +147,9 @@ async def update_user_event(
     if replace_cover_image:
         media_path = event_request.cover_image
         if event_request.cover_image:
-            ext: str = await common.get_file_extension(media_filename=event_request.cover_image.filename)
+            ext: str = await common.get_file_extension(
+                media_filename=event_request.cover_image.filename
+            )
             media_path, media_filename = await common.upload_content_to_s3(
                 media_content=event_request.cover_image,
                 dirpath="event-media",
@@ -207,7 +209,9 @@ async def send_event_invitations_to_hivers(
         limit=10000,
         fields=["guid"],
     )
-    if set(hivers_guids) - set([user.guid for user in linked_hivers_guids.listed_users]):
+    if set(hivers_guids) - set(
+        [user.guid for user in linked_hivers_guids.listed_users]
+    ):
         raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,
             api_context=USER_EVENT_API_CONTEXT,
@@ -235,7 +239,9 @@ async def send_event_invitations_to_hivers(
             db_context=DB_ES_DB_CONTEXT,
             detail="Could not find all hivers in the event attendees list in ES",
         )
-    es_event_attendee_guids: List[UUID] = [event_attendee.guid for event_attendee in es_event_attendees]
+    es_event_attendee_guids: List[UUID] = [
+        event_attendee.guid for event_attendee in es_event_attendees
+    ]
     for hiver_guid in hivers_guids:
         if hiver_guid not in es_event_attendee_guids:  # not invited yet
             new_event_attendee = EventAttendee(

@@ -14,7 +14,10 @@ from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import common_q
 from app.database.models.elasticsearch.es_hiver_request import ESHiverRequestBase
 from app.database.models.elasticsearch.es_user import ESUser
-from app.database.models.elasticsearch.es_user_follower import ESUserFollower, ESUserFollowerBase
+from app.database.models.elasticsearch.es_user_follower import (
+    ESUserFollower,
+    ESUserFollowerBase,
+)
 from app.depends.depends import get_es_query_service
 from celery_app.celery_app import celery_app
 
@@ -36,7 +39,9 @@ def celery_follow_user(
     psql_followed_user_fcm_token: str | None = None,
 ) -> None:
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    esclient: ElasticsearchClient = loop.run_until_complete(future=get_es_query_service())
+    esclient: ElasticsearchClient = loop.run_until_complete(
+        future=get_es_query_service()
+    )
     es_followed_user: ESUser | None = loop.run_until_complete(
         future=esclient.find(
             index=settings.ES_USERS_INDEX,
@@ -98,7 +103,9 @@ async def celery_unfollow_user(
     user_guid: UUID,
 ) -> None:
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    esclient: ElasticsearchClient = loop.run_until_complete(future=get_es_query_service())
+    esclient: ElasticsearchClient = loop.run_until_complete(
+        future=get_es_query_service()
+    )
     q: Dict[str, Any] = common_q.find_by_attr(guid=psql_user_follower_guid)
     es_user_follower: ESUserFollower | None = loop.run_until_complete(
         future=esclient.find(
@@ -168,7 +175,9 @@ def celery_send_hiver_request(
     receiver_fcm_token: str | None = None,
 ) -> None:
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    esclient: ElasticsearchClient = loop.run_until_complete(future=get_es_query_service())
+    esclient: ElasticsearchClient = loop.run_until_complete(
+        future=get_es_query_service()
+    )
     loop.run_until_complete(
         future=esclient.add(
             index=settings.ES_HIVER_REQUESTS_INDEX,

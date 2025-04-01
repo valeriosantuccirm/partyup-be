@@ -33,7 +33,10 @@ from app.database.models.psql.user_follower import UserFollower
 from app.database.redis import RedisClient
 from app.datamodels.schemas.response import PaginatedEvents
 from app.depends.depends import get_redis_client
-from celery_app.tasks.events_tasks import celery_join_public_event, celery_revoke_join_event
+from celery_app.tasks.events_tasks import (
+    celery_join_public_event,
+    celery_revoke_join_event,
+)
 
 
 async def get_leaderboard_events(

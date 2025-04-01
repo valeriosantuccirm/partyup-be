@@ -37,7 +37,9 @@ def celery_cancel_user_event(
     psql_event_updated_at: datetime,
 ) -> None:
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    esclient: ElasticsearchClient = loop.run_until_complete(future=get_es_query_service())
+    esclient: ElasticsearchClient = loop.run_until_complete(
+        future=get_es_query_service()
+    )
     loop.run_until_complete(
         future=esclient.update(
             index=settings.ES_EVENTS_INDEX,
@@ -57,7 +59,9 @@ def celery_send_event_invitations_to_hivers(
     user_username: str,
 ) -> None:
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    esclient: ElasticsearchClient = loop.run_until_complete(future=get_es_query_service())
+    esclient: ElasticsearchClient = loop.run_until_complete(
+        future=get_es_query_service()
+    )
     db_session: PSQLSessionManager | None = psql_session_manager_sync()
     if db_session:
         for hiver_guid in hivers_guids:
@@ -92,7 +96,9 @@ def celery_rsvp_event_participation(
     user_username: str,
 ) -> None:
     loop: AbstractEventLoop = asyncio.get_event_loop()
-    esclient: ElasticsearchClient = loop.run_until_complete(future=get_es_query_service())
+    esclient: ElasticsearchClient = loop.run_until_complete(
+        future=get_es_query_service()
+    )
     db_session: PSQLSessionManager | None = psql_session_manager_sync()
     es_event: ESEvent | None = loop.run_until_complete(
         future=esclient.find(
