@@ -206,14 +206,12 @@ async def send_event_invitations_to_hivers(
     description="RSVP to an event by accepting or decline a join request.",
 )
 async def rsvp_to_event_join_request(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
     db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
     user: Annotated[User, Depends(dependency=admit_user)],
     event_guid: Annotated[UUID, Path(default=...)],
     accept: Annotated[bool, Query(default=...)],
 ) -> None:
     await user_events.rsvp_event_participation(
-        esclient=esclient,
         db_session=db_session,
         user=user,
         event_guid=event_guid,

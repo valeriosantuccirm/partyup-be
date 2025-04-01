@@ -62,11 +62,14 @@ class PSQLSessionManager(PSQLTransactionMeta):
                 logger.error("Traceback (most recent call last):")
                 logger.error("".join(tback.format_tb(tb=traceback)))
             await self.session.rollback()
-            raise DBException(
-                api_context=DB_API_CONTEXT,
-                db_context=DB_PSQL_DB_CONTEXT,
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            if value:
+                raise value
+            else:
+                raise DBException(
+                    api_context=DB_API_CONTEXT,
+                    db_context=DB_PSQL_DB_CONTEXT,
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
         try:
             await self.session.flush()
             await self.session.commit()
@@ -145,9 +148,7 @@ class PSQLSessionManager(PSQLTransactionMeta):
         model: Type[T],
         clauses: Iterable[ColumnElement],
     ) -> int:
-        query: Select[Tuple[int]] = (
-            select(func.count()).select_from(model).where(or_(*clauses))
-        )
+        query: Select[Tuple[int]] = select(func.count()).select_from(model).where(or_(*clauses))
         result: Result[Tuple[int]] = await self.__exe(q=query)
         count: int | None = result.scalar()
         return count if count else 0

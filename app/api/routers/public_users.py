@@ -121,7 +121,6 @@ async def follow_user(
     description="Unfollow a user.",
 )
 async def unfollow_user(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
     db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
     user: Annotated[User, Depends(dependency=admit_user)],
     user_guid: Annotated[UUID, Path(default=...)],
@@ -138,7 +137,6 @@ async def unfollow_user(
         None
     """
     await public_users.unfollow_user(
-        esclient=esclient,
         db_session=db_session,
         user=user,
         user_guid=user_guid,

@@ -1,3 +1,5 @@
+import asyncio
+from asyncio import AbstractEventLoop
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
@@ -29,3 +31,13 @@ async def psql_session_manager() -> AsyncGenerator[PSQLSessionManager, None]:
     async with async_session_factory() as session:  # type: ignore[awaitable]
         async with PSQLSessionManager(session=session) as db_session:
             yield db_session
+
+
+def psql_session_manager_sync() -> PSQLSessionManager | None:
+    loop: AbstractEventLoop = asyncio.get_event_loop()
+
+    async def get_session() -> PSQLSessionManager | None:
+        async for session in psql_session_manager():
+            return session
+
+    return loop.run_until_complete(future=get_session())

@@ -137,13 +137,11 @@ async def upload_event_media(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def join_public_event(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
     event_guid: Annotated[UUID, Path(default=...)],
     db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
     user: Annotated[User, Depends(dependency=get_attendee)],
 ) -> None:
     return await events.join_public_event(
-        esclient=esclient,
         db_session=db_session,
         user=user,
         event_guid=event_guid,
@@ -155,13 +153,11 @@ async def join_public_event(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def revoke_join_public_event(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
     event_guid: Annotated[UUID, Path(default=...)],
     db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
     user: Annotated[User, Depends(dependency=get_attendee)],
 ) -> None:
     return await events.revoke_join_event(
-        esclient=esclient,
         db_session=db_session,
         user=user,
         event_guid=event_guid,
