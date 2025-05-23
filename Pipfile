@@ -32,6 +32,8 @@ firebase-admin = "==6.6.0"
 setuptools = "*"
 websockets = "==15.0"
 celery = {extras = ["redis"], version = "==5.4.0"}
+gunicorn = "*"
+flower = "*"
 
 [dev-packages]
 pytest = "==8.3.4"
@@ -42,4 +44,4 @@ awscli = "*"
 
 [requires]
 python_version = "3.13"
-python_full_version = "3.13.1"
+python_full_version = "3.13.2"

@@ -1,5 +1,5 @@
 # Use the official Python image as base
-FROM python:3.13.1-slim
+FROM python:3.13.2-slim
 
 # Setup env
 ENV LANG C.UTF-8
@@ -25,9 +25,3 @@ RUN \
 
 # Copy the FastAPI app code to the working directory
 COPY . .
-
-# Expose the port the application runs on
-EXPOSE 8000
-
-# Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0"]
