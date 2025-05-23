@@ -9,11 +9,11 @@ from starlette import status
 from app.api.exceptions.http_exc import APIException, DBException
 from app.config import settings
 from app.constants import DB_API_CONTEXT, DB_ES_DB_CONTEXT, USER_EVENT_API_CONTEXT
-from app.core import common, fcm
+from app.core import common
 from app.core.common import upload_content_to_s3
 from app.core.corefuncs import user_hivers
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.elasticsearch.queries import common_q, events_q
+from app.database.crud.elasticsearch.queries import events_q
 from app.database.crud.psql.session_manager import PSQLSessionManager
 from app.database.models.elasticsearch.es_event import ESEvent, ESEventBase
 from app.database.models.elasticsearch.es_event_attendee import ESEventAttendee
@@ -30,6 +30,11 @@ from app.datamodels.schemas.request import (
     UserEventUpdateExtendedRequest,
 )
 from app.datamodels.schemas.response import PaginatedListedUser
+from celery_app.tasks.user_events_tasks import (
+    celery_cancel_user_event,
+    celery_rsvp_event_participation,
+    celery_send_event_invitations_to_hivers,
+)
 
 
 async def create_event(
@@ -107,13 +112,14 @@ async def cancel_user_event(
     await db_session.update(
         instance=psql_event,
     )
-    await esclient.update(
-        index=settings.ES_EVENTS_INDEX,
-        doc_id=es_event.id,
-        status=EventStatus.CANCELLED.value,
-        updated_at=psql_event.updated_at,
+    celery_cancel_user_event.apply_async(
+        args=(
+            es_event.id,
+            psql_event.updated_at,
+        ),
+        queue="partyup_user_events_queue",
+        priority=3,
     )
-    # TODO: add logic of refund people when event is cancelled
 
 
 async def update_user_event(
@@ -237,40 +243,30 @@ async def send_event_invitations_to_hivers(
         event_attendee.guid for event_attendee in es_event_attendees
     ]
     for hiver_guid in hivers_guids:
-        if hiver_guid in es_event_attendee_guids:
-            raise APIException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                api_context=USER_EVENT_API_CONTEXT,
-                detail=f"Hiver with guid '{hiver_guid}' has already been invited to the event",
+        if hiver_guid not in es_event_attendee_guids:  # not invited yet
+            new_event_attendee = EventAttendee(
+                attendee_type=AttendeeType.HIVER,
+                invitation_sent_at=datetime.now(),
+                status=EventAttendeeStatus.PENDING,
+                event_guid=event_guid,
+                user_guid=hiver_guid,
             )
-        new_event_attendee = EventAttendee(
-            attendee_type=AttendeeType.HIVER,
-            invitation_sent_at=datetime.now(),
-            status=EventAttendeeStatus.PENDING,
-            event_guid=event_guid,
-            user_guid=hiver_guid,
-        )
-        await db_session.add(
-            instance=new_event_attendee,
-        )
-        await esclient.add(
-            index=settings.ES_EVENT_ATTENDEES_INDEX,
-            instance=ESEventAttendee(**dict(new_event_attendee)),
-        )
-        hiver: User | None = await db_session.find_one_or_none(
-            model=User,
-            criteria=(Column("guid") == hiver_guid,),
-        )
-        if hiver and hiver.fcm_token:
-            await fcm.send_push_notification(
-                fcm_token=hiver.fcm_token,
-                title="Event invitation",
-                body=f"You have been invited to join {psql_event.title} by {user.username}",
+            await db_session.add(
+                instance=new_event_attendee,
             )
+    celery_send_event_invitations_to_hivers.apply_async(
+        args=(
+            new_event_attendee.model_dump(),
+            hivers_guids,
+            psql_event.title,
+            user.username,
+        ),
+        queue="partyup_user_events_queue",
+        priority=3,
+    )
 
 
 async def rsvp_event_participation(
-    esclient: ElasticsearchClient,
     db_session: PSQLSessionManager,
     user: User,
     event_guid: UUID,
@@ -293,20 +289,6 @@ async def rsvp_event_participation(
             api_context=USER_EVENT_API_CONTEXT,
             detail="Only for an event with status 'UPCOMING' RSVP can be sent",
         )
-    es_event: ESEvent | None = await esclient.find(
-        index=settings.ES_EVENTS_INDEX,
-        query=common_q.find_by_attr(guid=event_guid),
-        model=ESEvent,
-        one=True,
-    )
-    if not es_event:
-        raise DBException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
-            detail=f"Could not find event in ES DB with guid '{event_guid}'",
-        )
-
     psql_event_attendee: EventAttendee | None = await db_session.find_one_or_none(
         model=EventAttendee,
         criteria=(
@@ -331,25 +313,14 @@ async def rsvp_event_participation(
             detail="User already RSVP'd to the event",
         )
     psql_event_attendee.status = EventAttendeeStatus.rsvp(accept=accept)
-    es_event_attendee: ESEventAttendee | None = await esclient.find(
-        index=settings.ES_EVENT_ATTENDEES_INDEX,
-        query=common_q.find_by_attr(guid=psql_event.guid),
-        model=ESEventAttendee,
-        one=True,
+    celery_rsvp_event_participation.apply_async(
+        args=(
+            event_guid,
+            psql_event.guid,
+            psql_event_attendee.status.value,
+            psql_event.creator_guid,
+            user.username,
+        ),
+        queue="partyup_user_events_queue",
+        priority=2,
     )
-    if es_event_attendee:
-        await esclient.update(
-            index=settings.ES_EVENT_ATTENDEES_INDEX,
-            doc_id=es_event_attendee.id,
-            status=psql_event_attendee.status,
-        )
-    creator: User | None = await db_session.find_one_or_none(
-        model=User,
-        criteria=(Column("guid") == psql_event.creator_guid,),
-    )
-    if creator and creator.fcm_token:
-        await fcm.send_push_notification(
-            fcm_token=creator.fcm_token,
-            title="RSVP update",
-            body=f"{user.username} just {psql_event_attendee.status.value.lower()} the invitation to your event",
-        )

@@ -48,7 +48,7 @@ async def signup_user_by_email(
     user: User = User(
         email=user_form.email,
         email_verified=firebase_user.email_verified,
-        firebase_uid=firebase_user.uid,  # According to 'firebase_admin' doc this is never None
+        firebase_uid=firebase_user.uid,  # type: ignore[awaitable] - According to 'firebase_admin' doc this is never None
         is_active=True,
         user_info_status=UserInfoStatus.INCOMPLETE,
         auth_provider=OAuthProvider.EMAIL,

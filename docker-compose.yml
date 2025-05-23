@@ -1,15 +1,16 @@
-version: '3.8'
-
 services:
   # FastAPI app
   partyup:
     build: .
-    ports:
-      - "8000:8000"
+    container_name: partyup
+    expose:
+      - 8000
+    command: "gunicorn --workers 6 --timeout 60 --bind 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker app.main:app"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - DB_URI=postgresql+asyncpg://postgres:password@partyup_db:5432/partyup_db
+      - ES_URI=http://elasticsearch:9200
       # - SECRET_KEY
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_SECONDS=86400
@@ -18,8 +19,20 @@ services:
       - redis
       - prometheus
       - elasticsearch
+      - traefik
+      - kibana
+      - flower
     networks:
       - app-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.partyup.rule=Host(`partyup.localhost`)"
+      - "traefik.http.routers.partyup.entrypoints=web"
+      - "traefik.http.routers.partyup.middlewares=ratelimit@docker"
+      - "traefik.http.middlewares.ratelimit.ratelimit.average=5"
+      - "traefik.http.middlewares.ratelimit.ratelimit.burst=10"
+      - "traefik.http.middlewares.ratelimit.ratelimit.period=1s"
+      - "traefik.http.services.partyup.loadbalancer.server.port=8000"
 
   # PostgreSQL database
   partyup_db:
@@ -34,6 +47,8 @@ services:
       - app-network
     volumes:
       - partyup_db_data:/var/lib/postgresql/data
+    labels:
+      - "traefik.enable=false"
 
   # Redis cache
   redis:
@@ -42,6 +57,8 @@ services:
       - "6379:6379"
     networks:
       - app-network
+    labels:
+      - "traefik.enable=false"
 
   # Prometheus + Grafana monitoring
   prometheus:
@@ -52,6 +69,8 @@ services:
       - ./prometheus:/etc/prometheus
     networks:
       - app-network
+    labels:
+      - "traefik.enable=false"
 
   grafana:
     image: grafana/grafana
@@ -61,6 +80,8 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     networks:
       - app-network
+    labels:
+      - "traefik.enable=false"
 
   # CloudBeaver for DB access
   cloudbeaver:
@@ -72,6 +93,8 @@ services:
       - cloudbeaver:/opt/cloudbeaver/workspace
     networks:
       - app-network
+    labels:
+      - "traefik.enable=false"
 
   # Elasticsearch
   elasticsearch:
@@ -90,6 +113,8 @@ services:
       - "9300:9300"
     networks:
       - app-network
+    labels:
+      - "traefik.enable=false"
 
   # Kibana
   kibana:
@@ -100,6 +125,53 @@ services:
       - "5601:5601"
     depends_on:
       - elasticsearch
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=false"
+  
+  # Celery + Flower (monitoring)
+  celery:
+    build: .
+    command: celery -A celery_app.celery_app worker --loglevel=info -Q partyup_user_hivers_queue,partyup_events_queue,partyup_public_users_queue,partyup_user_events_queue
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHONPATH=/app
+    depends_on:
+      - redis
+    networks:
+    - app-network
+    labels:
+      - "traefik.enable=false"
+  
+  flower:
+    image: mher/flower:latest
+    container_name: flower
+    command: celery --broker=redis://redis:6379 flower --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - celery
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=false"
+  
+  # Traefik reverse proxy
+  traefik:
+    image: traefik:v2.11
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --entrypoints.web.address=:80
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+    - "traefik.enable=false"
     networks:
       - app-network
 

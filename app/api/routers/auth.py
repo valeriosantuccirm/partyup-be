@@ -38,11 +38,8 @@ async def sign_up_by_email(
         request (Request): The incoming HTTP request object.
         session (AsyncSession): Database session dependency.
         user_form (UserCreateBase): User registration details.
-
-    Returns:
-        None
     """
-    return await authfuncs.signup_user_by_email(
+    await authfuncs.signup_user_by_email(
         esclient=esclient,
         request=request,
         db_session=db_session,

@@ -10,19 +10,14 @@ from app.api.exceptions.http_exc import APIException, DBException
 from app.config import settings
 from app.constants import (
     DB_API_CONTEXT,
-    DB_ES_DB_CONTEXT,
     DB_PSQL_DB_CONTEXT,
     PUB_EVENT_API_CONTEXT,
 )
-from app.core import common, fcm
+from app.core import common
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.elasticsearch.queries import common_q, events_q
+from app.database.crud.elasticsearch.queries import events_q
 from app.database.crud.psql.session_manager import PSQLSessionManager
 from app.database.models.elasticsearch.es_event import ESEvent
-from app.database.models.elasticsearch.es_event_attendee import (
-    ESEventAttendee,
-    ESEventAttendeeBase,
-)
 from app.database.models.elasticsearch.es_media import ESMediaBase
 from app.database.models.enums.event import (
     AttendeeType,
@@ -38,6 +33,10 @@ from app.database.models.psql.user_follower import UserFollower
 from app.database.redis import RedisClient
 from app.datamodels.schemas.response import PaginatedEvents
 from app.depends.depends import get_redis_client
+from celery_app.tasks.events_tasks import (
+    celery_join_public_event,
+    celery_revoke_join_event,
+)
 
 
 async def get_leaderboard_events(
@@ -162,14 +161,13 @@ async def upload_user_event_media(
         "media_type": MediaType.PHOTO.value,
     }
     redis_client = await get_redis_client()
-    await redis_client.redis.publish(
+    await redis_client.redis.publish(  # type: ignore[awaitable]
         channel=redis_channel, message=json.dumps(redis_message)
     )
     return psql_media
 
 
 async def join_public_event(
-    esclient: ElasticsearchClient,
     db_session: PSQLSessionManager,
     user: User,
     event_guid: UUID,
@@ -190,19 +188,6 @@ async def join_public_event(
             api_context=PUB_EVENT_API_CONTEXT,
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Event with guid '{event_guid}' has reached the maximum number of attendees",
-        )
-    es_event: ESEvent | None = await esclient.find(
-        index=settings.ES_EVENTS_INDEX,
-        query=common_q.find_by_attr(guid=event_guid),
-        model=ESEvent,
-        one=True,
-    )
-    if not es_event:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Event with guid '{event_guid}' not found in ES",
         )
     psql_event.total_attendees_count += 1
     attendee_type: AttendeeType = AttendeeType.PUBLIC
@@ -238,27 +223,22 @@ async def join_public_event(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with guid '{psql_event.creator_guid}' not found",
         )
-    await esclient.add(
-        index=settings.ES_EVENT_ATTENDEES_INDEX,
-        instance=ESEventAttendeeBase(**event_attendee.model_dump()),
+    celery_join_public_event.apply_async(
+        args=(
+            event_attendee.model_dump(),
+            psql_event.total_attendees_count,
+            psql_event.followers_attendees_count,
+            event_guid,
+            user.username,
+            psql_event.cover_image_url,
+            creator.fcm_token,
+        ),
+        queue="partyup_events_queue",
+        priority=1,
     )
-    await esclient.update(
-        index=settings.ES_EVENTS_INDEX,
-        doc_id=es_event.id,
-        total_attendees_count=psql_event.total_attendees_count,
-        followers_attendees_count=psql_event.followers_attendees_count,
-    )
-    if creator.fcm_token:
-        await fcm.send_push_notification(
-            fcm_token=creator.fcm_token,
-            title="New event joiner!",
-            body=f"{user.username} will join your event",
-            image_url=psql_event.cover_image_url,
-        )
 
 
 async def revoke_join_event(
-    esclient: ElasticsearchClient,
     db_session: PSQLSessionManager,
     user: User,
     event_guid: UUID,
@@ -274,19 +254,6 @@ async def revoke_join_event(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Event with guid '{event_guid}' not found in PSQL or status is not 'UPCOMING'",
         )
-    es_event: ESEvent | None = await esclient.find(
-        index=settings.ES_EVENTS_INDEX,
-        query=common_q.find_by_attr(guid=event_guid),
-        model=ESEvent,
-        one=True,
-    )
-    if not es_event:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Event with guid '{event_guid}' not found in ES",
-        )
     psql_event_attendee: EventAttendee | None = await db_session.find_one_or_none(
         model=EventAttendee,
         criteria=(
@@ -300,19 +267,6 @@ async def revoke_join_event(
             db_context=DB_PSQL_DB_CONTEXT,
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with guid '{user.guid}' not found in event with guid '{event_guid}' in PSQL",
-        )
-    es_event_attendee: ESEventAttendee | None = await esclient.find(
-        index=settings.ES_EVENT_ATTENDEES_INDEX,
-        query=common_q.find_by_attr(guid=psql_event_attendee.guid),
-        model=ESEventAttendee,
-        one=True,
-    )
-    if not es_event_attendee:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with guid '{user.guid}' not found in event with guid '{event_guid}' in ES",
         )
     psql_event.total_attendees_count -= 1
     creator: User | None = await db_session.find_one_or_none(
@@ -339,20 +293,17 @@ async def revoke_join_event(
     await db_session.delete(
         instance=psql_event_attendee,
     )
-    await esclient.delete(
-        index=settings.ES_EVENT_ATTENDEES_INDEX,
-        doc_id=es_event_attendee.id,
+    celery_revoke_join_event.apply_async(
+        args=(
+            user.guid,
+            psql_event.followers_attendees_count,
+            psql_event.total_attendees_count,
+            psql_event_attendee.guid,
+            event_guid,
+            psql_event.cover_image_url,
+            user.username,
+            creator.fcm_token,
+        ),
+        queue="partyup_events_queue",
+        priority=1,
     )
-    await esclient.update(
-        index=settings.ES_EVENTS_INDEX,
-        doc_id=es_event.id,
-        total_attendees_count=psql_event.total_attendees_count,
-        followers_attendees_count=psql_event.followers_attendees_count,
-    )
-    if creator.fcm_token:
-        await fcm.send_push_notification(
-            fcm_token=creator.fcm_token,
-            title="Event partecipaton update",
-            body=f"{user.username} will not be able to join your event",
-            image_url=psql_event.cover_image_url,
-        )

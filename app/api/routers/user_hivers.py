@@ -23,7 +23,6 @@ router = APIRouter(prefix="/users/me/hivers")
     description="Respond to a friend request (accept or reject).",
 )
 async def respond_to_hiver_request(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
     db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
     user: Annotated[User, Depends(dependency=admit_user)],
     hiver_request_guid: Annotated[UUID, Path(default=...)],
@@ -42,7 +41,6 @@ async def respond_to_hiver_request(
         None
     """
     await user_hivers.respond_hiver_request(
-        esclient=esclient,
         db_session=db_session,
         user=user,
         hiver_request_guid=hiver_request_guid,

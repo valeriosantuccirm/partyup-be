@@ -5,6 +5,7 @@ from types import TracebackType
 from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
 
 from asyncpg import PostgresError
+from firebase_admin.exceptions import FirebaseError
 from sqlalchemy import ColumnElement, Result, Select, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,7 +54,7 @@ class PSQLSessionManager(PSQLTransactionMeta):
     async def __aexit__(
         self,
         type_: Type[BaseException] | None = None,
-        value: BaseException | None = None,
+        value: SQLAlchemyError | PostgresError | FirebaseError | None = None,
         traceback: TracebackType | None = None,
     ) -> None:
         if type_:
@@ -62,11 +63,13 @@ class PSQLSessionManager(PSQLTransactionMeta):
                 logger.error("Traceback (most recent call last):")
                 logger.error("".join(tback.format_tb(tb=traceback)))
             await self.session.rollback()
-            raise DBException(
-                api_context=DB_API_CONTEXT,
-                db_context=DB_PSQL_DB_CONTEXT,
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            if value:
+                raise DBException(  # TODO: review custom exc
+                    api_context=DB_API_CONTEXT,
+                    db_context=DB_PSQL_DB_CONTEXT,
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=str(value.args),
+                )
         try:
             await self.session.flush()
             await self.session.commit()
