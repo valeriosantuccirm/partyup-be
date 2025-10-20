@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from datetime import date, datetime, timedelta
+from typing import Any
+from uuid import UUID
 
 from fastapi import UploadFile
 from pydantic import (
@@ -16,6 +17,7 @@ from starlette.datastructures import UploadFile as starletteUploadFile
 
 from app.api.exceptions.http_exc import APIException
 from app.constants import USER_API_CONTEXT
+from app.database.models.enums.scheduled_payment import Currency
 from app.datamodels.utils import validate_fileimage_extension
 
 
@@ -72,12 +74,12 @@ class UserRequestBaseModel(BaseModel):
         """
         try:
             datetime.strptime(value, "%d/%m/%Y")
-        except ValueError:
+        except ValueError as e:
             raise APIException(
                 api_context=USER_API_CONTEXT,
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Date of birth must be in the format: DD/MM/YYYY and respect valid calendar dates",
-            )
+            ) from e
         return value
 
 
@@ -132,7 +134,7 @@ class EventCreateRequest(BaseModel):
         return value
 
     @classmethod
-    def examples(cls) -> List[Dict[str, Any]]:
+    def examples(cls) -> list[dict[str, Any]]:
         return [
             {
                 "currency": "€",
@@ -193,7 +195,7 @@ class UserEventUpdateRequest(BaseModel):
     start_date: datetime = Field(default=...)
 
     @classmethod
-    def examples(cls) -> List[Dict[str, Any]]:
+    def examples(cls) -> list[dict[str, Any]]:
         return [
             {
                 "description": "Description",
@@ -225,3 +227,10 @@ class UserEventUpdateExtendedRequest(UserEventUpdateRequest):
         cls, value: starletteUploadFile | None
     ) -> starletteUploadFile | None:
         return validate_fileimage_extension(value=value)
+
+
+class ScheduledPaymentRequest(BaseModel):
+    amount: StrictFloat = Field(default=0.0)
+    currency: Currency = Field(default=Currency.eur)
+    due_date: date = Field(default=...)
+    paye_account_guid: UUID = Field(default=...)

@@ -1,9 +1,10 @@
 import asyncio
 from asyncio import AbstractEventLoop
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.session import Session
 
 from app.config import settings
 from app.database.crud.psql.session_manager import PSQLSessionManager
@@ -11,14 +12,14 @@ from app.database.crud.psql.session_manager import PSQLSessionManager
 # Create session
 engine: AsyncEngine = create_async_engine(url=settings.DB_URI, echo=True)
 
-async_session_factory = sessionmaker(
+async_session_factory: sessionmaker[Session] = sessionmaker(
     engine,  # type: ignore[awaitable]
     class_=AsyncSession,
     expire_on_commit=False,
 )
 
 
-async def psql_session_manager() -> AsyncGenerator[PSQLSessionManager, None]:
+async def psql_session_manager() -> AsyncGenerator[PSQLSessionManager]:
     """
     Dependency that provides an async session to interact with the database.
 
@@ -28,7 +29,7 @@ async def psql_session_manager() -> AsyncGenerator[PSQLSessionManager, None]:
     Yields:
         AsyncSession: An async SQLAlchemy session to interact with the database.
     """
-    async with async_session_factory() as session:  # type: ignore[awaitable]
+    async with async_session_factory() as session:  # pyright: ignore[reportGeneralTypeIssues]
         async with PSQLSessionManager(session=session) as db_session:
             yield db_session
 

@@ -1,14 +1,19 @@
+import os
 from datetime import datetime
 from typing import Any
 
+import requests
+from argon2.exceptions import VerifyMismatchError
 from fastapi import Request
 from firebase_admin import auth
-from firebase_admin._user_mgt import UserRecord
+from firebase_admin._user_mgt import (
+    UserRecord,
+)
 from sqlalchemy import Column
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException
-from app.config import redis, settings
+from app.api.exceptions.http_exc import APIException, DBException
+from app.config import ph, redis
 from app.constants import AUTH_API_CONTEXT
 from app.core import common as coreutils
 from app.core.email import Email
@@ -20,11 +25,12 @@ from app.database.models.enums.common import OAuthProvider
 from app.database.models.enums.user import UserInfoStatus
 from app.database.models.psql.user import User
 from app.datamodels.schemas.auth import FCMToken, FirebaseUser, Token
+from app.datamodels.schemas.pubsub import PubSubUserMsg
 from app.datamodels.schemas.request import UserCreateBase
+from app.publisher import es_user_publisher
 
 
 async def signup_user_by_email(
-    esclient: ElasticsearchClient,
     request: Request,
     db_session: PSQLSessionManager,
     user_form: UserCreateBase,
@@ -48,25 +54,32 @@ async def signup_user_by_email(
     user: User = User(
         email=user_form.email,
         email_verified=firebase_user.email_verified,
-        firebase_uid=firebase_user.uid,  # type: ignore[awaitable] - According to 'firebase_admin' doc this is never None
+        firebase_uid=firebase_user.uid,  # pyright: ignore[reportArgumentType] According to 'firebase_admin' doc this is never None
         is_active=True,
         user_info_status=UserInfoStatus.INCOMPLETE,
         auth_provider=OAuthProvider.EMAIL,
         profile_image=firebase_user.photo_url,
         username=user_form.username,
+        hashed_pswd=ph.hash(user_form.hashed_psw),
     )
     if not user.email_verified:
         sender = Email(
             request=request,
             user_email=user.email,
         )
-        await sender.send_verification_email()
+        await sender.send_verification_email(
+            firebase_uid=user.firebase_uid,
+        )
     await db_session.add(
         instance=user,
     )
-    await esclient.add(
-        index=settings.ES_USERS_INDEX,
-        instance=ESUserBase(**dict(user)),
+    await es_user_publisher.publish(
+        PubSubUserMsg(
+            event="create",
+            instance=ESUserBase(
+                **dict(user),
+            ),
+        ).model_dump()
     )
 
 
@@ -84,7 +97,9 @@ async def resend_email_verification(
         request=request,
         user_email=user.email,
     )
-    await sender.send_verification_email()
+    await sender.send_verification_email(
+        firebase_uid=user.firebase_uid,
+    )
 
 
 async def signin_or_signup_user_by_google(
@@ -120,9 +135,13 @@ async def signin_or_signup_user_by_google(
         await db_session.add(
             instance=user,
         )
-        await esclient.add(
-            index=settings.ES_USERS_INDEX,
-            instance=ESUserBase(**dict(user)),
+        await es_user_publisher.publish(
+            PubSubUserMsg(
+                event="create",
+                instance=ESUserBase(
+                    **dict(user),
+                ),
+            ).model_dump()
         )
     return Token(access_token=firebase_user.access_token)
 
@@ -176,3 +195,58 @@ async def reset_user_password(
         user_email=user.email,
     )
     await sender.send_reset_password_link()
+
+
+async def verify_in_app_email(
+    db_session: PSQLSessionManager,
+    firebase_uid: str,
+) -> None:
+    user: User | None = await db_session.find_one_or_none(
+        model=User,
+        criteria=(Column("firebase_uid") == firebase_uid,),
+    )
+    if not user:
+        raise DBException()
+
+    user.email_verified = True
+    await db_session.update(user)
+
+
+async def login_with_eamil_and_pswd(
+    db_session: PSQLSessionManager,
+    email: str,
+    password: str,
+) -> Token:
+    user: User | None = await db_session.find_one_or_none(
+        model=User,
+        criteria=(Column("email") == email,),
+    )
+    if not user:
+        raise DBException()
+    try:
+        ph.verify(user.hashed_pswd, password)
+        API_KEY = os.environ[
+            "FIREBASE_WEB_API_KEY"
+        ]  # ← From Firebase Console > Project Settings
+        payload = {
+            "email": email,
+            "password": password,
+            "returnSecureToken": True,
+        }
+        res = requests.post(
+            f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={API_KEY}",
+            json=payload,
+        )
+        res.raise_for_status()
+        id_token = res.json()["idToken"]
+        firebase_user: UserRecord = auth.get_user(uid=user.firebase_uid)
+        redis.set(
+            name=f"access_token:{firebase_user.uid}",
+            value=id_token,
+            ex=600,
+        )  # 10 mins
+        return Token(access_token=id_token)
+    except VerifyMismatchError as e:
+        raise APIException(
+            api_context="auth",
+        ) from e

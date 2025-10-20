@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from sqlalchemy import Column
@@ -29,8 +29,8 @@ async def get_user_hiver_requests(
     mode: Literal["sent", "received"],
     limit: int = 20,
     offset: int = 0,
-) -> List[ESHiverRequest]:
-    q: Dict[str, Any] = users_q.find_user_hiver_requests(
+) -> list[ESHiverRequest]:
+    q: dict[str, Any] = users_q.find_user_hiver_requests(
         user_guid=user.guid,
         request_status=status,
         mode=mode,
@@ -116,7 +116,7 @@ async def get_user_linked_hivers(
     user: User,
     limit: int = 20,
     offset: int = 0,
-    fields: List[str] = [
+    fields: list[str] = [
         "username",
         "profile_image",
         "followers_count",
@@ -126,13 +126,13 @@ async def get_user_linked_hivers(
         "full_name",
     ],
 ) -> PaginatedListedUser:
-    hivers_relations_q: Dict[str, Any] = users_q.find_user_hivers(
+    hivers_relations_q: dict[str, Any] = users_q.find_user_hivers(
         psql_user_guid=user.guid,
         limit=limit,
         offset=offset,
         source=["hiver_guid", "user_guid"],
     )
-    user_hivers_relations: List[ESUserHiverRelations] = await esclient.find(
+    user_hivers_relations: list[ESUserHiverRelations] = await esclient.find(
         index=settings.ES_USER_HIVERS_INDEX,
         query=hivers_relations_q,
         model=ESUserHiverRelations,
@@ -151,13 +151,13 @@ async def get_user_linked_hivers(
             ]
         )
     )
-    user_hivers_q: Dict[str, Any] = users_q.find_users(
+    user_hivers_q: dict[str, Any] = users_q.find_users(
         psql_guids=relations_guids,
         limit=limit,
         offset=offset,
         source=fields,
     )
-    user_hivers: List[ESListedUser] = await esclient.find(
+    user_hivers: list[ESListedUser] = await esclient.find(
         index=settings.ES_USERS_INDEX,
         query=user_hivers_q,
         model=ESListedUser,

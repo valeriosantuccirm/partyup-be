@@ -1,6 +1,7 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, Request
+from fastapi import APIRouter, Body, Depends, Path, Request
+from pydantic import StrictStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
@@ -27,7 +28,6 @@ router = APIRouter(prefix="/auth")
 )
 async def sign_up_by_email(
     request: Annotated[Request, Any],
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
     db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
     user_form: Annotated[UserCreateBase, Body(default=...)],
 ) -> None:
@@ -36,14 +36,37 @@ async def sign_up_by_email(
 
     Args:
         request (Request): The incoming HTTP request object.
-        session (AsyncSession): Database session dependency.
+        db_session (AsyncSession): Database session dependency.
         user_form (UserCreateBase): User registration details.
     """
     await authfuncs.signup_user_by_email(
-        esclient=esclient,
         request=request,
         db_session=db_session,
         user_form=user_form,
+    )
+
+
+@router.post(
+    path="/login/email",
+    status_code=status.HTTP_200_OK,
+    description="Login with `uername` and `password`.",
+)
+async def login_by_email_and_password(
+    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    email: Annotated[StrictStr, Body(default=...)],
+    password: Annotated[StrictStr, Body(default=...)],
+) -> Token:
+    """
+    TODO: find the way
+    """
+    EMAIL = "valerio.santucci@gmail.com"
+    PSWD = "12romanistA!"
+    return await authfuncs.login_with_eamil_and_pswd(
+        db_session=db_session,
+        # email=email,
+        # password=password,
+        email=EMAIL,
+        password=PSWD,
     )
 
 
@@ -64,7 +87,7 @@ async def sign_up_by_google(
     If the user does not exist, they are registered automatically.
 
     Args:
-        session (AsyncSession): Database session dependency.
+        db_session (AsyncSession): Database session dependency.
         firebase_user (FirebaseUser): Authenticated Google user details.
         fcm_token (FCMToken): Firebase Cloud Messaging token for push notifications.
 
@@ -103,6 +126,31 @@ async def sign_in_by_email(
     return await authfuncs.signin_user_by_email(
         user=user,
         fcm_token=fcm_token,
+    )
+
+
+@router.get(
+    path="/{firebase_uid}/email-verification",
+    status_code=status.HTTP_200_OK,
+    description="Verify in app user email.",
+)
+async def verify_eamil(
+    firebase_uid: Annotated[str, Path(default=...)],
+    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+) -> None:
+    """
+    Verify in app user email as redirect URL after Firebase email authentication.
+
+    Args:
+        firebase_uid (str): The Firebase id associated to the user.
+        db_session (AsyncSession): Database session dependency.
+
+    Returns:
+        None
+    """
+    await authfuncs.verify_in_app_email(
+        db_session=db_session,
+        firebase_uid=firebase_uid,
     )
 
 

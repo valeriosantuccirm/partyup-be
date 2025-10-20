@@ -5,13 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.corefuncs import user as userfuncs
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.psql.session_manager import PSQLSessionManager
 from app.database.models.psql.user import User
 from app.database.session import psql_session_manager
 from app.datamodels.schemas.request import UserRequestBaseModel
 from app.datamodels.schemas.response import UserResponseModel
-from app.depends.depends import get_current_user, get_es_query_service
+from app.depends.depends import get_current_user
 
 router = APIRouter(prefix="/users/me/profile")
 
@@ -44,7 +43,6 @@ async def get_user_details(
     response_model=UserResponseModel,
 )
 async def complete_user_profile(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
     db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
     user: Annotated[User, Depends(dependency=get_current_user)],
     user_form: Annotated[UserRequestBaseModel, Body(default=...)],
@@ -61,7 +59,6 @@ async def complete_user_profile(
         UserResponseModel: The updated user details.
     """
     return await userfuncs.update_existing_user(
-        esclient=esclient,
         db_session=db_session,
         user=user,
         user_form=user_form,

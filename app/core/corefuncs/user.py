@@ -1,23 +1,22 @@
 from datetime import datetime
-from typing import Any, List, Tuple
+from typing import Any
 
 from sqlalchemy import ColumnElement
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException, DBException
-from app.config import settings
-from app.constants import AUTH_API_CONTEXT, DB_API_CONTEXT, DB_ES_DB_CONTEXT
+from app.api.exceptions.http_exc import APIException
+from app.constants import AUTH_API_CONTEXT
 from app.core.common import (
     are_user_info_complete,
     is_user_unique_params_already_assigned,
 )
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.elasticsearch.queries import common_q
 from app.database.crud.psql.session_manager import PSQLSessionManager
-from app.database.models.elasticsearch.es_user import ESUser, ESUserBase
+from app.database.models.elasticsearch.es_user import ESUserBase
 from app.database.models.enums.user import UserInfoStatus
 from app.database.models.psql.user import User
+from app.datamodels.schemas.pubsub import PubSubUserMsg
 from app.datamodels.schemas.request import UserRequestBaseModel
+from app.publisher.publisher import es_user_publisher
 
 
 async def deactivate_account(
@@ -38,10 +37,17 @@ async def deactivate_account(
     user.is_active = False
     user.username = None
     user.logout_timestamp = datetime.now().replace(microsecond=0)
+    await es_user_publisher.publish(
+        PubSubUserMsg(
+            event="create",
+            instance=ESUserBase(
+                **dict(**user.model_dump()),
+            ),
+        ).model_dump()
+    )
 
 
 async def update_existing_user(
-    esclient: ElasticsearchClient,
     db_session: PSQLSessionManager,
     user: User,
     user_form: UserRequestBaseModel,
@@ -76,20 +82,6 @@ async def update_existing_user(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Username {user_form.username} is not assignable",
         )
-    es_user: ESUser | None = await esclient.find(
-        index=settings.ES_USERS_INDEX,
-        query=common_q.find_by_attr(guid=user.guid),
-        model=ESUser,
-        one=True,
-    )
-    if not es_user:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Could not find ES user linked to PSQL user with guid '{user.guid}'",
-        )
-
     for k, v in user_form.model_dump().items():
         setattr(user, k, v)
     user.full_name = f"{user.first_name} {user.last_name}"
@@ -99,19 +91,20 @@ async def update_existing_user(
         else UserInfoStatus.INCOMPLETE
     )
     user.updated_at = datetime.now()
-    fileds: dict[str, Any] = {**es_user.model_dump(), **user.model_dump()}
-    updated_es_user: ESUserBase = ESUserBase(**fileds)
-    await esclient.update(
-        index=settings.ES_USERS_INDEX,
-        doc_id=es_user.id,
-        **updated_es_user.model_dump(),
+    await es_user_publisher.publish(
+        PubSubUserMsg(
+            event="create",
+            instance=ESUserBase(
+                **dict(**user.model_dump()),
+            ),
+        ).model_dump()
     )
     return user
 
 
 async def find_user(
     db_session: PSQLSessionManager,
-    filters: Tuple[Tuple[str, Any], ...] = (),
+    filters: tuple[tuple[str, Any], ...] = (),
 ) -> User:
     """
     Retrieve an existing user from the database.
@@ -126,7 +119,7 @@ async def find_user(
     Raises:
         :APIException: Gracefully handled exceptions.
     """
-    clauses: List[ColumnElement] = []
+    clauses: list[ColumnElement] = []
     for pair in filters:
         clauses.append(getattr(User, pair[0]) == pair[1])
     user: User | None = await db_session.find_one_or_none(

@@ -1,4 +1,4 @@
-from typing import Annotated, List, Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -50,7 +50,7 @@ async def respond_to_hiver_request(
 
 @router.get(
     path="/requests",
-    response_model=List[ESHiverRequest],
+    response_model=list[ESHiverRequest],
     status_code=status.HTTP_200_OK,
     description="Retrieve sent or received friend requests.",
 )
@@ -63,7 +63,7 @@ async def get_user_hivers_requests(
     ] = HiverRequestStatus.PENDING,
     limit: Annotated[int, Query(default=...)] = 20,
     offset: Annotated[int, Query(default=...)] = 0,
-) -> List[ESHiverRequest]:
+) -> list[ESHiverRequest]:
     """
     Retrieve a list of friend requests sent or received by the user.
 

@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import Enum
-from typing import List
 from uuid import UUID
 
 from pydantic import (
@@ -75,7 +74,7 @@ class ESEventBase(BaseModel):
     public_attendees_count: StrictInt = Field(default=...)
     total_attendees_count: StrictInt = Field(default=...)
     creator_popularity_score: StrictFloat = Field(default=...)
-    tags: List[StrictStr] = Field(default=[])
+    tags: list[StrictStr] = Field(default=[])
 
     @field_serializer("end_date", "start_date", "created_at", "updated_at", "ponr")
     def strtoime(self, value: datetime | None) -> str | None:

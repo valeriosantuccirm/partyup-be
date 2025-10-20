@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from geoalchemy2 import Geometry
@@ -31,6 +30,7 @@ class User(SQLModel, table=True):
         :following_count  (StrictInt): The number of followed users. Defaults to 0.
         :full_name (StrictStr | None): The composed name of the user. Defaults to None.
         :guid (UUID): The unique identifier for the user (primary key).
+        hashed_pswd (StrictStr): The user's hashed password.
         :hivers_count (StrictInt): The number of user's hivers. Defaults to 0.
         :is_active (StrictBool): Indicates whether the user's account is active.
         :last_name (StrictStr | None): The user's last name. Defaults to None.
@@ -69,6 +69,7 @@ class User(SQLModel, table=True):
     guid: UUID = Field(
         default_factory=uuid4, nullable=False, primary_key=True, unique=True, index=True
     )
+    hashed_pswd: StrictStr = Field(default=..., nullable=True)
     hivers_count: StrictInt = Field(default=0, nullable=False)
     is_active: StrictBool = Field(default=False, nullable=False)
     last_name: StrictStr | None = Field(default=None, nullable=True)
@@ -81,7 +82,7 @@ class User(SQLModel, table=True):
     popularity_score: StrictFloat = Field(default=0.0, nullable=False)
     posts_count: StrictInt = Field(default=0, nullable=False)
     profile_image: StrictStr | None = Field(default=None)
-    tags: Optional[List[str]] = Field(
+    tags: list[str] | None = Field(
         default_factory=list, sa_column=Column(ARRAY(item_type=String))
     )
     updated_at: datetime = Field(default_factory=datetime.now, nullable=False)

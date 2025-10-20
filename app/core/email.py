@@ -26,7 +26,12 @@ class Email:
         self.user_email: str = user_email
         self.request: Request = request
 
-    async def send_email(self, subject: str, template_name: str, url: str) -> None:
+    async def send_email(
+        self,
+        subject: str,
+        template_name: str,
+        url: str,
+    ) -> None:
         """
         Sends an email using a specified template.
 
@@ -56,7 +61,10 @@ class Email:
         fm = FastMail(config=emailconfig)
         await fm.send_message(message=message)
 
-    async def send_verification_email(self) -> None:
+    async def send_verification_email(
+        self,
+        firebase_uid: str,
+    ) -> None:
         """
         Sends a Firebase email verification link.
 
@@ -65,7 +73,11 @@ class Email:
         """
         # Generate Firebase email verification link
         verification_link: str = auth.generate_email_verification_link(
-            email=self.user_email
+            email=self.user_email,
+            action_code_settings=auth.ActionCodeSettings(
+                url=f"{self.request.base_url}auth/{firebase_uid}/email-verification",
+                handle_code_in_app=False,
+            ),
         )
 
         # Send email with the verification link

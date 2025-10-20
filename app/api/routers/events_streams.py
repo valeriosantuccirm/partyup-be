@@ -1,5 +1,5 @@
 import asyncio
-from typing import Annotated, Any, Dict
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, WebSocket, WebSocketDisconnect
@@ -32,7 +32,7 @@ async def event_media_ws(
     redis_set_key: str = f"event_users:{event_guid}"
     if not redis_client.redis.sismember(
         name=redis_set_key,
-        value=str("fd04f528-d228-4d45-9e5c-74c10b7c6402"),
+        value="fd04f528-d228-4d45-9e5c-74c10b7c6402",
     ):
         raise APIException(
             api_context=USER_API_CONTEXT,
@@ -44,14 +44,12 @@ async def event_media_ws(
     await websocket.accept()
     try:
         while True:
-            message: Dict[str, Any] | None = await pubsub.get_message(
+            message: dict[str, Any] | None = await pubsub.get_message(
                 ignore_subscribe_messages=True
             )
             if message and message["type"] == "message":
                 await websocket.send_text(data=message["data"])
             await asyncio.sleep(delay=0.1)  # Prevents high CPU usage
     except WebSocketDisconnect:
-        redis_client.redis.srem(
-            redis_set_key, str("fd04f528-d228-4d45-9e5c-74c10b7c6402")
-        )
+        redis_client.redis.srem(redis_set_key, "fd04f528-d228-4d45-9e5c-74c10b7c6402")
         await pubsub.unsubscribe(f"event_media:{event_guid}")

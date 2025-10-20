@@ -1,6 +1,7 @@
 import traceback
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Dict, List, Tuple, Type, TypeVar, overload
+from typing import Any, TypeVar, overload
 from uuid import UUID, uuid4
 
 from elastic_transport import ObjectApiResponse
@@ -39,9 +40,9 @@ class ElasticsearchMeta(metaclass=Meta):
         return cls._es
 
     @classmethod
-    def exc_handler(cls, func: Callable) -> Any:
+    def exc_handler(cls, func: Callable[..., Any]) -> Any:
         @wraps(wrapped=func)
-        async def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 rv: Any = await func(*args, **kwargs)
                 return rv
@@ -51,7 +52,7 @@ class ElasticsearchMeta(metaclass=Meta):
                     db_context=DB_ES_DB_CONTEXT,
                     status_code=e.status_code,
                     detail=e.info,
-                )
+                ) from e
 
         return wrapper
 
@@ -66,8 +67,8 @@ class ElasticsearchClient(ElasticsearchMeta):
     async def __search(
         self,
         index: str,
-        query: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+        query: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         response: ObjectApiResponse[Any] = await self.es.search(
             index=index,
             body=query,
@@ -79,11 +80,11 @@ class ElasticsearchClient(ElasticsearchMeta):
     @ElasticsearchMeta.exc_handler
     async def __msearch(
         self,
-        mquery: List[Dict[str, Any]],
-    ) -> Tuple[List[Dict[str, Any]], ...]:
+        mquery: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], ...]:
         response: ObjectApiResponse[Any] = await self.es.msearch(searches=mquery)
-        left: List[Dict[str, Any]] = response["responses"][0]["hits"]["hits"]
-        right: List[Dict[str, Any]] = response["responses"][1]["hits"]["hits"]
+        left: list[dict[str, Any]] = response["responses"][0]["hits"]["hits"]
+        right: list[dict[str, Any]] = response["responses"][1]["hits"]["hits"]
         return left, right
 
     @ElasticsearchMeta.exc_handler
@@ -91,7 +92,7 @@ class ElasticsearchClient(ElasticsearchMeta):
         self,
         index: str,
         id: UUID,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         response: ObjectApiResponse[Any] = await self.es.get(
             index=index,
             id=str(id),
@@ -115,9 +116,9 @@ class ElasticsearchClient(ElasticsearchMeta):
         self,
         index: str,
         doc_id: UUID,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
-        update_body: Dict[str, Any] = {
+        update_body: dict[str, Any] = {
             "doc": {
                 **kwargs,
             },
@@ -141,24 +142,24 @@ class ElasticsearchClient(ElasticsearchMeta):
 
     @overload
     async def find(
-        self, index: str, query: Dict[str, Any], model: Type[T]
-    ) -> List[T]: ...
+        self, index: str, query: dict[str, Any], model: type[T]
+    ) -> list[T]: ...
 
     @overload
     async def find(
-        self, index: str, query: Dict[str, Any], model: Type[T], one: bool
+        self, index: str, query: dict[str, Any], model: type[T], one: bool
     ) -> T | None: ...
 
     async def find(
         self,
         index: str,
-        query: Dict[str, Any],
-        model: Type[T],
+        query: dict[str, Any],
+        model: type[T],
         one: bool = False,
-    ) -> List[T] | T | None:
-        results: List[Dict[str, Any]] = await self.__search(index=index, query=query)
+    ) -> list[T] | T | None:
+        results: list[dict[str, Any]] = await self.__search(index=index, query=query)
         instances = []
-        instances: List[T] = [
+        instances: list[T] = [
             model(**r) for r in results
         ]  # TODO: use model_construct to boost performance
         if one:
@@ -169,16 +170,16 @@ class ElasticsearchClient(ElasticsearchMeta):
         self,
         index: str,
         id: UUID,
-        model: Type[T],
+        model: type[T],
     ) -> T:
-        result: Dict[str, Any] = await self.__get(index=index, id=id)
+        result: dict[str, Any] = await self.__get(index=index, id=id)
         return model(**result["_source"], id=result["_id"])
 
     async def update(
         self,
         index: str,
         doc_id: UUID,
-        **kwargs,
+        **kwargs: dict[str, Any],
     ) -> None:
         await self.__update(index=index, doc_id=doc_id, **kwargs)
 
@@ -198,6 +199,6 @@ class ElasticsearchClient(ElasticsearchMeta):
 
     async def msearch(
         self,
-        mquery: List[Dict[str, Any]],
-    ) -> Tuple[G, G]:
+        mquery: list[dict[str, Any]],
+    ) -> tuple[G, G]:
         return await self.__msearch(mquery=mquery)

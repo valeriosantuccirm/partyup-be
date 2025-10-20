@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 from uuid import UUID
 
 from pydantic import (
@@ -55,7 +54,7 @@ class ESUserBase(BaseModel):
     location_name: StrictStr | None = Field(default=None)
     popularity_score: StrictFloat = Field(default=0.0)
     profile_image: StrictStr | None = Field(default=None)
-    tags: List[StrictStr] = Field(default=[])
+    tags: list[StrictStr] = Field(default=[])
     total_posts: StrictInt = Field(default=0)
     updated_at: datetime = Field(default_factory=datetime.now)
     username: StrictStr | None = Field(default=None)

@@ -1,12 +1,12 @@
-from typing import Any, Dict, List
+from typing import Any
 
 
 def find_by_attr(
-    source: List[str] = [],
+    source: list[str] = [],
     size: int = 1,
-    **kwargs,
-) -> Dict[str, Any]:
-    must_clauses: List[Dict[str, Dict[str, Any]]] = []
+    **kwargs: Any,
+) -> dict[str, Any]:
+    must_clauses: list[dict[str, dict[str, Any]]] = []
     must_clauses.extend(
         [
             {
@@ -15,7 +15,7 @@ def find_by_attr(
             for k, v in kwargs.items()
         ]
     )
-    q: Dict[str, Any] = {
+    q: dict[str, Any] = {
         "query": {
             "bool": {
                 "must": must_clauses,

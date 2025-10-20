@@ -1,0 +1,30 @@
+# ruff.toml
+
+# Python version target (adjust if needed)
+target-version = "py313"
+
+# Max line length
+line-length = 88
+
+# Enable specific rule sets (PEP 8 + best practices)
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "TID",  # tidy imports
+    "Q",    # flake8-quotes
+    "RUF"   # Ruff-specific rules
+]
+
+# Ignore specific rules (optional)
+ignore = [
+    "E501"  # Ignore line length if preferred
+]
+
+[format]
+skip-magic-trailing-comma = false
+line-ending = "lf"

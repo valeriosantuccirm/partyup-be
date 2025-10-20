@@ -5,7 +5,7 @@ services:
     container_name: partyup
     expose:
       - 8000
-    command: "gunicorn --workers 6 --timeout 60 --bind 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker app.main:app"
+    command: "uv run uvicorn --host 0.0.0.0 ---port 8000 --workers $(nproc) --loop uvloop --http httptools --timeout-keep-alive 5 --log-level warning"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -21,7 +21,7 @@ services:
       - elasticsearch
       - traefik
       - kibana
-      - flower
+      # - flower
     networks:
       - app-network
     labels:
@@ -89,7 +89,7 @@ services:
     restart: always
     ports:
       - "8978:8978"
-    volumes: 
+    volumes:
       - cloudbeaver:/opt/cloudbeaver/workspace
     networks:
       - app-network
@@ -129,35 +129,35 @@ services:
       - app-network
     labels:
       - "traefik.enable=false"
-  
+
   # Celery + Flower (monitoring)
-  celery:
-    build: .
-    command: celery -A celery_app.celery_app worker --loglevel=info -Q partyup_user_hivers_queue,partyup_events_queue,partyup_public_users_queue,partyup_user_events_queue
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - PYTHONPATH=/app
-    depends_on:
-      - redis
-    networks:
-    - app-network
-    labels:
-      - "traefik.enable=false"
-  
-  flower:
-    image: mher/flower:latest
-    container_name: flower
-    command: celery --broker=redis://redis:6379 flower --port=5555
-    ports:
-      - "5555:5555"
-    depends_on:
-      - celery
-    networks:
-      - app-network
-    labels:
-      - "traefik.enable=false"
-  
+  # celery:
+  #   build: .
+  #   command: celery -A celery_app.celery_app worker --loglevel=info -Q partyup_user_hivers_queue,partyup_events_queue,partyup_public_users_queue,partyup_user_events_queue
+  #   environment:
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - PYTHONPATH=/app
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #   - app-network
+  #   labels:
+  #     - "traefik.enable=false"
+
+  # flower:
+  #   image: mher/flower:latest
+  #   container_name: flower
+  #   command: celery --broker=redis://redis:6379 flower --port=5555
+  #   ports:
+  #     - "5555:5555"
+  #   depends_on:
+  #     - celery
+  #   networks:
+  #     - app-network
+  #   labels:
+  #     - "traefik.enable=false"
+
   # Traefik reverse proxy
   traefik:
     image: traefik:v2.11

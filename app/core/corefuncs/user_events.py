@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
 from fastapi import UploadFile
@@ -83,8 +83,8 @@ async def get_user_events(
     esclient: ElasticsearchClient,
     user: User,
     status: EventStatus | None = None,
-) -> List[ESEvent]:
-    q: Dict[str, Any] = events_q.find_user_events(
+) -> list[ESEvent]:
+    q: dict[str, Any] = events_q.find_user_events(
         creator_guid=user.guid,
         status=status,
     )
@@ -112,7 +112,7 @@ async def cancel_user_event(
     await db_session.update(
         instance=psql_event,
     )
-    celery_cancel_user_event.apply_async(
+    celery_cancel_user_event.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
         args=(
             es_event.id,
             psql_event.updated_at,
@@ -189,7 +189,7 @@ async def send_event_invitations_to_hivers(
     db_session: PSQLSessionManager,
     user: User,
     event_guid: UUID,
-    hivers_guids: List[UUID],
+    hivers_guids: list[UUID],
 ) -> None:
     psql_event, _ = await common.find_es_and_psql_user_event(
         esclient=esclient,
@@ -209,9 +209,7 @@ async def send_event_invitations_to_hivers(
         limit=10000,
         fields=["guid"],
     )
-    if set(hivers_guids) - set(
-        [user.guid for user in linked_hivers_guids.listed_users]
-    ):
+    if set(hivers_guids) - {user.guid for user in linked_hivers_guids.listed_users}:
         raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,
             api_context=USER_EVENT_API_CONTEXT,
@@ -223,11 +221,11 @@ async def send_event_invitations_to_hivers(
             api_context=USER_EVENT_API_CONTEXT,
             detail="Number of hivers exceeds the reserved slots for the event",
         )
-    q: Dict[str, Any] = events_q.find_event_attendees(
+    q: dict[str, Any] = events_q.find_event_attendees(
         event_guid=event_guid,
         user_guids=hivers_guids,
     )
-    es_event_attendees: List[ESEventAttendee] = await esclient.find(
+    es_event_attendees: list[ESEventAttendee] = await esclient.find(
         index=settings.ES_EVENT_ATTENDEES_INDEX,
         query=q,
         model=ESEventAttendee,
@@ -239,7 +237,7 @@ async def send_event_invitations_to_hivers(
             db_context=DB_ES_DB_CONTEXT,
             detail="Could not find all hivers in the event attendees list in ES",
         )
-    es_event_attendee_guids: List[UUID] = [
+    es_event_attendee_guids: list[UUID] = [
         event_attendee.guid for event_attendee in es_event_attendees
     ]
     for hiver_guid in hivers_guids:
@@ -254,16 +252,16 @@ async def send_event_invitations_to_hivers(
             await db_session.add(
                 instance=new_event_attendee,
             )
-    celery_send_event_invitations_to_hivers.apply_async(
-        args=(
-            new_event_attendee.model_dump(),
-            hivers_guids,
-            psql_event.title,
-            user.username,
-        ),
-        queue="partyup_user_events_queue",
-        priority=3,
-    )
+            celery_send_event_invitations_to_hivers.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
+                args=(
+                    new_event_attendee.model_dump(),
+                    hivers_guids,
+                    psql_event.title,
+                    user.username,
+                ),
+                queue="partyup_user_events_queue",
+                priority=3,
+            )
 
 
 async def rsvp_event_participation(
@@ -313,7 +311,7 @@ async def rsvp_event_participation(
             detail="User already RSVP'd to the event",
         )
     psql_event_attendee.status = EventAttendeeStatus.rsvp(accept=accept)
-    celery_rsvp_event_participation.apply_async(
+    celery_rsvp_event_participation.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
         args=(
             event_guid,
             psql_event.guid,

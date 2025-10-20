@@ -1,5 +1,4 @@
 import re
-from typing import List
 
 from pydantic import BaseModel, EmailStr, Field, StrictBool, StrictStr, field_validator
 from starlette import status
@@ -51,7 +50,7 @@ class FirebaseUser(BaseModel):
     email_verified: StrictBool = Field(default=...)
     full_name: StrictStr | None = Field(default=None)
     profile_picture_url: StrictStr | None = Field(default=None)
-    providers: List[StrictStr] = Field(default=[])
+    providers: list[StrictStr] = Field(default=[])
     uid: StrictStr = Field(default=...)
 
 

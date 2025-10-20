@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Set
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Column
@@ -42,7 +42,7 @@ async def search_accounts(
 ) -> PaginatedListedUser:
     # TODO: handle user location. Need to convert the string to lat/lon pairs
     if not lat or not lon:
-        data: Dict[str, Any] | None = await common.search_map_location(
+        data: dict[str, Any] | None = await common.search_map_location(
             query=user.location,
             limit=1,
             first=True,
@@ -51,7 +51,7 @@ async def search_accounts(
             lat = float(data["lat"])
             lon = float(data["lon"])
 
-    mqs: List[Dict[str, Any]] = users_q.find_linked_users_ids(
+    mqs: list[dict[str, Any]] = users_q.find_linked_users_ids(
         left_index=settings.ES_USER_HIVERS_INDEX,
         right_index=settings.ES_USER_FOLLOWERS_INDEX,
         left_term={"hiver_guid": user.guid},
@@ -64,13 +64,13 @@ async def search_accounts(
         ],
     )
     hiver_hits, follower_hits = await esclient.msearch(mquery=mqs)
-    hiver_guids: Set[UUID] = {
+    hiver_guids: set[UUID] = {
         UUID(hex=hit["_source"]["user_guid"]) for hit in hiver_hits
     }
-    follower_guids: Set[UUID] = {
+    follower_guids: set[UUID] = {
         UUID(hex=hit["_source"]["user_guid"]) for hit in follower_hits
     }
-    q: Dict[str, Any] = users_q.find_public_users(
+    q: dict[str, Any] = users_q.find_public_users(
         user_bio=user.bio,
         user_guid=str(user.guid),
         user_username=user.username,
@@ -93,7 +93,7 @@ async def search_accounts(
             "full_name",
         ],
     )
-    ranked_accounts: List[ESListedUser] = await esclient.find(
+    ranked_accounts: list[ESListedUser] = await esclient.find(
         index=settings.ES_USERS_INDEX,
         query=q,
         model=ESListedUser,

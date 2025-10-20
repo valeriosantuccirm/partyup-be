@@ -1,4 +1,4 @@
-from typing import Any, Dict, Literal
+from typing import Any, Literal
 
 from fastapi import HTTPException
 from starlette import status
@@ -29,7 +29,7 @@ class APIException(HTTPException):
         ],
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail: str = "Something went wrong",
-        headers: Dict[str, Any] = {},
+        headers: dict[str, Any] = {},
     ) -> None:
         self.api_context: str = api_context
         super().__init__(

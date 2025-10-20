@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict
+from typing import Any
 
 from elasticsearch import Elasticsearch
 
@@ -16,7 +16,7 @@ es = Elasticsearch(hosts=[ES_URI])
 ## INDICES AND MAPPINGS
 
 EVENTS_INDEX = "events"
-EVENTS_MAPPING: Dict[str, Dict[str, Dict[str, Dict[str, str | int]]]] = {
+EVENTS_MAPPING: dict[str, dict[str, dict[str, dict[str, str | int]]]] = {
     "mappings": {
         "properties": {
             "hivers_count": {"type": "integer"},
@@ -50,7 +50,7 @@ EVENTS_MAPPING: Dict[str, Dict[str, Dict[str, Dict[str, str | int]]]] = {
 
 
 USERS_INDEX: str = "users"
-USERS_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
+USERS_MAPPINGS: dict[str, dict[str, dict[str, dict[str, str]]]] = {
     "mappings": {
         "properties": {
             "bio": {"type": "text"},
@@ -58,6 +58,7 @@ USERS_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
             "created_at": {"type": "date"},
             "date_of_birth": {"type": "keyword"},
             "email": {"type": "keyword"},
+            "email_verified": {"type": "boolean"},
             "event_participation": {"type": "integer"},
             "first_name": {"type": "text"},
             "followers_count": {"type": "integer"},
@@ -81,7 +82,7 @@ USERS_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
 
 
 EVENT_ATTENDEES_INDEX = "event_attendees"
-EVENT_ATTENDEES_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
+EVENT_ATTENDEES_MAPPINGS: dict[str, dict[str, dict[str, dict[str, str]]]] = {
     "mappings": {
         "properties": {
             "attendee_type": {"type": "keyword"},
@@ -98,7 +99,7 @@ EVENT_ATTENDEES_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
 
 
 USER_HIVERS_INDEX = "user_hivers"
-USER_HIVERS_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
+USER_HIVERS_MAPPINGS: dict[str, dict[str, dict[str, dict[str, str]]]] = {
     "mappings": {
         "properties": {
             "created_at": {"type": "date"},
@@ -111,7 +112,7 @@ USER_HIVERS_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
 
 
 USER_FOLLOWER_INDEX = "user_followers"
-USER_FOLLOWERS_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
+USER_FOLLOWERS_MAPPINGS: dict[str, dict[str, dict[str, dict[str, str]]]] = {
     "mappings": {
         "properties": {
             "created_at": {"type": "date"},
@@ -124,7 +125,7 @@ USER_FOLLOWERS_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
 
 
 HIVER_REQUESTS_INDEX = "hiver_requests"
-HIVER_REQUESTS_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
+HIVER_REQUESTS_MAPPINGS: dict[str, dict[str, dict[str, dict[str, str]]]] = {
     "mappings": {
         "properties": {
             "guid": {"type": "keyword"},
@@ -137,7 +138,7 @@ HIVER_REQUESTS_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
 }
 
 MEDIA_INDEX = "media"
-MEDIA_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
+MEDIA_MAPPINGS: dict[str, dict[str, dict[str, dict[str, str]]]] = {
     "mappings": {
         "properties": {
             "guid": {"type": "keyword"},
@@ -153,7 +154,7 @@ MEDIA_MAPPINGS: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {
 }
 
 
-ENTITIES: Dict[str, Any] = {
+ENTITIES: dict[str, Any] = {
     EVENT_ATTENDEES_INDEX: EVENT_ATTENDEES_MAPPINGS,
     EVENTS_INDEX: EVENTS_MAPPING,
     USER_HIVERS_INDEX: USER_HIVERS_MAPPINGS,

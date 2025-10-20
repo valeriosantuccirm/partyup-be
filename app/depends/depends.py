@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Dict, Tuple
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends
@@ -7,7 +7,9 @@ from fastapi.security import (
     HTTPBearer,
 )
 from firebase_admin import auth
-from firebase_admin._user_mgt import UserRecord
+from firebase_admin._user_mgt import (
+    UserRecord,
+)
 from redis.asyncio.client import PubSub
 from sqlalchemy import Column
 from starlette import status
@@ -47,7 +49,7 @@ async def get_firebase_user(
     """
     try:
         token: str = authcreds.credentials
-        decoded_token: Dict[str, Any] = auth.verify_id_token(id_token=token)
+        decoded_token: dict[str, Any] = auth.verify_id_token(id_token=token)
         firebase_user: UserRecord = auth.get_user(uid=decoded_token["uid"])
         redis.set(
             name=f"access_token:{firebase_user.uid}",
@@ -73,14 +75,14 @@ async def get_firebase_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid or expired token. Details: {e}",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
     except Exception as e:
         raise APIException(
             api_context=AUTH_API_CONTEXT,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Could not validate credentials. Details: {e}",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
 
 async def get_current_user(
@@ -97,7 +99,6 @@ async def get_current_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    psql_user.email_verified = firebase_user.email_verified
     return psql_user
 
 
@@ -138,7 +139,7 @@ async def get_attendee(
 async def pubsub_event(
     event_guid: UUID,
     user: User = Depends(dependency=get_current_user),
-) -> Tuple[RedisClient, PubSub]:
+) -> tuple[RedisClient, PubSub]:
     redis_set_key: str = f"event_users:{event_guid}"
     if not redis_client.redis:
         await redis_client.connect()

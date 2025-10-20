@@ -1,6 +1,6 @@
 import asyncio
 from asyncio import AbstractEventLoop
-from typing import Any, Dict
+from typing import Any
 from uuid import UUID
 
 from kombu import Queue
@@ -33,7 +33,7 @@ celery_app.conf.task_routes = {
 
 @celery_app.task
 def celery_join_public_event(
-    event_attendee_dict: Dict[str, Any],
+    event_attendee_dict: dict[str, Any],
     psql_event_total_attendees_count: int,
     psql_event_followers_attendees_count: int,
     event_guid: UUID,

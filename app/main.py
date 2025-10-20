@@ -1,12 +1,14 @@
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from prometheus_fastapi_instrumentator import Instrumentator
+
+# from prometheus_fastapi_instrumentator import Instrumentator
 from sqlmodel import SQLModel
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -14,6 +16,7 @@ from app.api.routers import (
     auth,
     events,
     maps,
+    payments,
     public_users,
     user,
     user_events,
@@ -91,10 +94,21 @@ app.include_router(router=events.router, tags=["Events"])
 app.include_router(router=public_users.router, tags=["Public Users"])
 app.include_router(router=user_hivers.router, tags=["User Hivers"])
 app.include_router(router=maps.router, tags=["Maps"])
+app.include_router(router=payments.router, tags=["Payments"])
 # app.include_router(router=events_streams.wsrouter, tags=["Events Streams WebSocket"]) #TODO: feature to implement
 
 # add monitoring metrics source
-Instrumentator().instrument(app=app).expose(app=app)
+# Instrumentator().instrument(app=app).expose(app=app)
 
 if __name__ == "__main__":
-    uvicorn.run(app="app.main:app", reload=True, host="0.0.0.0", port=8000)
+    # uvicorn.run(app="app.main:app", reload=True, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app="app.main:app",
+        reload=True,
+        host="0.0.0.0",
+        port=8000,
+        workers=os.cpu_count(),
+        loop="uvloop",
+        http="httptools",
+        timeout_keep_alive=5,
+    )

@@ -1,9 +1,12 @@
 import json
 import traceback
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, List, Literal
+from typing import Any, Literal
 
-from asyncpg.exceptions import UniqueViolationError
+from asyncpg.exceptions import (
+    UniqueViolationError,
+)
 from fastapi import Request
 from fastapi.exceptions import HTTPException
 from redis.typing import ResponseT
@@ -21,7 +24,7 @@ CONN = "session"
 CONN_VARS: tuple[Literal["session"], Literal["_"]] = ("session", "_")
 
 
-def manage_transaction(func: Callable) -> Any:
+def manage_transaction(func: Callable[..., Any]) -> Any:
     """
     Decorator for managing database transactions in a function.
 
@@ -47,17 +50,13 @@ def manage_transaction(func: Callable) -> Any:
     """
 
     @wraps(wrapped=func)
-    async def wrapper(*args, **kwargs) -> Any:
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         _session: AsyncSession | None = None
         for conn_var in CONN_VARS:
             if conn_var in kwargs:
                 _session = kwargs[conn_var]
                 break
-        _session = (
-            _session
-            if _session and isinstance(_session, AsyncSession)
-            else AsyncSession()
-        )
+        _session = _session if _session else AsyncSession()
         try:
             async with _session.begin():
                 rv: Any = await func(*args, **kwargs)
@@ -73,21 +72,21 @@ def manage_transaction(func: Callable) -> Any:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=e.args,
-            )
+            ) from e
         except (IntegrityError, UniqueViolationError) as e:
             logger.error(traceback.format_exc())
             await _session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=e.args,
-            )
+            ) from e
         except KeyError as e:
             logger.error(traceback.format_exc())
             await _session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=e.args,
-            )
+            ) from e
         except HTTPException as e:
             logger.error(traceback.format_exc())
             await _session.rollback()
@@ -98,7 +97,7 @@ def manage_transaction(func: Callable) -> Any:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=e.args,
-            )
+            ) from e
         finally:
             await _session.close()
 
@@ -121,9 +120,9 @@ def cache_result(key: str, ttl: int) -> Any:
         :Exception: If an unexpected exception occurs during function execution.
     """
 
-    def decorator(func: Callable) -> Any:
+    def decorator(func: Callable[..., Any]) -> Any:
         @wraps(wrapped=func)
-        async def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 cache_key = key
                 if kwargs.get("request"):
@@ -138,10 +137,10 @@ def cache_result(key: str, ttl: int) -> Any:
                 if cached is not None:
                     return json.loads(s=str(cached))
                 # compute the result
-                func_result: List[User] = await func(*args, **kwargs)
+                func_result: list[User] = await func(*args, **kwargs)
 
                 # parsing sqlalchemy ORM instances to pydantic models
-                models: List[UserResponseModel] = [
+                models: list[UserResponseModel] = [
                     UserResponseModel(**user.model_dump()) for user in func_result
                 ]
                 # cache the result
@@ -157,14 +156,14 @@ def cache_result(key: str, ttl: int) -> Any:
                 logger.error(traceback.format_exc())
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-                )
+                ) from e
 
         return wrapper
 
     return decorator
 
 
-def clean_session(func: Callable) -> Any:
+def clean_session(func: Callable[..., Any]) -> Any:
     """
     Decorator for managing database pending transactions when DB errors occur
     during depends injection.
@@ -181,7 +180,7 @@ def clean_session(func: Callable) -> Any:
     """
 
     @wraps(wrapped=func)
-    async def wrapper(*args, **kwargs) -> Any:
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         _session: AsyncSession = kwargs[CONN]
         try:
             async with _session.begin():
@@ -199,6 +198,6 @@ def clean_session(func: Callable) -> Any:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=e.args,
-            )
+            ) from e
 
     return wrapper

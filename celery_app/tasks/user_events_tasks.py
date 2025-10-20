@@ -1,7 +1,7 @@
 import asyncio
 from asyncio import AbstractEventLoop
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
 from kombu import Queue
@@ -53,8 +53,8 @@ def celery_cancel_user_event(
 
 @celery_app.task
 def celery_send_event_invitations_to_hivers(
-    new_event_attendee_dict: Dict[str, Any],
-    hivers_guids: List[UUID],
+    new_event_attendee_dict: dict[str, Any],
+    hivers_guids: list[UUID],
     psql_event_title: str,
     user_username: str,
 ) -> None:

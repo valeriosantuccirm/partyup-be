@@ -1,5 +1,5 @@
 import json
-from typing import Annotated, List
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, File, Form, Path, Query, UploadFile
@@ -72,7 +72,7 @@ async def create_event(
 
 @router.get(
     path="",
-    response_model=List[ESEventBase],
+    response_model=list[ESEventBase],
     status_code=status.HTTP_200_OK,
     description="Retrieve a list of events for the logged-in user.",
 )
@@ -81,7 +81,7 @@ async def get_events(
     esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
     user: Annotated[User, Depends(dependency=admit_user)],
     status: Annotated[EventStatus | None, Query(default=...)] = None,
-) -> List[ESEvent]:
+) -> list[ESEvent]:
     """
     Retrieve events for the logged-in user.
 
@@ -189,7 +189,7 @@ async def send_event_invitations_to_hivers(
     db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
     user: Annotated[User, Depends(dependency=admit_user)],
     event_guid: Annotated[UUID, Path(default=...)],
-    hivers_guids: Annotated[List[UUID], Body(default=...)],
+    hivers_guids: Annotated[list[UUID], Body(default=...)],
 ) -> None:
     await user_events.send_event_invitations_to_hivers(
         esclient=esclient,

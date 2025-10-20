@@ -1,27 +1,36 @@
-# Use the official Python image as base
 FROM python:3.13.2-slim
 
-# Setup env
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONFAULTHANDLER 1
+ENV LANG=C.UTF-8 \
+  LC_ALL=C.UTF-8 \
+  PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONFAULTHANDLER=1
 
-# Set the working directory in the container
 WORKDIR /app
 
-# both files are explicitly required!
-COPY Pipfile Pipfile.lock ./
+# Install build dependencies
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
+  curl \
+  gcc \
+  python3-dev \
+  libssl-dev \
+  libpq-dev \
+  musl-dev && \
+  rm -rf /var/lib/apt/lists/*
 
-# Install pipenv and compilation dependencies lightly
-RUN \
-  apt-get update && \
-  apt-get install -y --no-install-recommends gcc python3-dev libssl-dev libpq-dev musl-dev && \
-  pip install pipenv && \
-  pipenv install --deploy --system && \
-  apt-get remove -y gcc python3-dev libssl-dev && \
-  apt-get autoremove -y && \
-  pip uninstall pipenv -y
+# Install uv
+RUN curl -L https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-unknown-linux-musl.tar.gz \
+  -o uv.tar.gz && \
+  tar -xzf uv.tar.gz && \
+  mv uv-*/uv /usr/local/bin/uv && \
+  chmod +x /usr/local/bin/uv && \
+  rm -rf uv.tar.gz uv-*
 
-# Copy the FastAPI app code to the working directory
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install Python deps
+RUN uv sync --no-dev
+
+# Copy app code
 COPY . .

@@ -121,7 +121,6 @@ async def upload_event_media(
     """
     Uploads a media file (image/video) for an event.
     Stores it in S3, saves metadata in PostgreSQL, and updates Elasticsearch.
-    Triggers Redis Pub/Sub for real-time updates.
     """
     return await events.upload_user_event_media(
         esclient=esclient,

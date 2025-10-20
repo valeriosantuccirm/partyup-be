@@ -1,11 +1,14 @@
 import traceback
 import traceback as tback
+from collections.abc import Callable, Iterable, Sequence
 from functools import wraps
 from types import TracebackType
-from typing import Any, Callable, Iterable, Tuple, Type, TypeVar
+from typing import Any, TypeVar
 
 from asyncpg import PostgresError
-from firebase_admin.exceptions import FirebaseError
+from firebase_admin.exceptions import (
+    FirebaseError,
+)
 from sqlalchemy import ColumnElement, Result, Select, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,9 +26,9 @@ T = TypeVar("T", bound=SQLModel)
 
 class PSQLTransactionMeta(metaclass=Meta):
     @classmethod
-    def exc_handler(cls, func: Callable) -> Any:
+    def exc_handler(cls, func: Callable[..., Any]) -> Any:
         @wraps(wrapped=func)
-        async def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 rv: Any = await func(*args, **kwargs)
                 return rv
@@ -35,7 +38,7 @@ class PSQLTransactionMeta(metaclass=Meta):
                     db_context=DB_PSQL_DB_CONTEXT,
                     detail=str(e),
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
+                ) from e
 
         return wrapper
 
@@ -53,7 +56,7 @@ class PSQLSessionManager(PSQLTransactionMeta):
 
     async def __aexit__(
         self,
-        type_: Type[BaseException] | None = None,
+        type_: type[BaseException] | None = None,
         value: SQLAlchemyError | PostgresError | FirebaseError | None = None,
         traceback: TracebackType | None = None,
     ) -> None:
@@ -80,7 +83,7 @@ class PSQLSessionManager(PSQLTransactionMeta):
                 db_context=DB_PSQL_DB_CONTEXT,
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=str(e),
-            )
+            ) from e
         finally:
             await self.session.close()
 
@@ -103,8 +106,8 @@ class PSQLSessionManager(PSQLTransactionMeta):
     @PSQLTransactionMeta.exc_handler
     async def __exe(
         self,
-        q: Select[Tuple[T]],
-    ) -> Result[Tuple[T]]:
+        q: Select[tuple[T]],
+    ) -> Result[tuple[T]]:
         return await self.session.execute(statement=q)
 
     async def add(
@@ -133,24 +136,33 @@ class PSQLSessionManager(PSQLTransactionMeta):
 
     async def find_one_or_none(
         self,
-        model: Type[T],
-        criteria: Iterable[ColumnElement] = (),
+        model: type[T],
+        criteria: Iterable[ColumnElement[Any]] = (),
         with_for_update: bool = False,
     ) -> T | None:
-        query: Select[Tuple[T]] = select(model).filter(*criteria)
+        query: Select[tuple[T]] = select(model).filter(*criteria)
         if with_for_update:
             query = query.with_for_update()
-        result: Result[Tuple[T]] = await self.__exe(q=query)
+        result: Result[tuple[T]] = await self.__exe(q=query)
         return result.scalars().one_or_none()
 
     async def count(
         self,
-        model: Type[T],
-        clauses: Iterable[ColumnElement],
+        model: type[T],
+        clauses: Iterable[ColumnElement[Any]],
     ) -> int:
-        query: Select[Tuple[int]] = (
+        query: Select[tuple[int]] = (
             select(func.count()).select_from(model).where(or_(*clauses))
         )
-        result: Result[Tuple[int]] = await self.__exe(q=query)
+        result: Result[tuple[int]] = await self.__exe(q=query)
         count: int | None = result.scalar()
         return count if count else 0
+
+    async def get(
+        self,
+        model: type[T],
+        criteria: Iterable[ColumnElement[Any]] = (),
+    ) -> Sequence[T]:
+        query: Select[tuple[T]] = select(model).filter(*criteria)
+        result: Result[tuple[T]] = await self.__exe(q=query)
+        return result.scalars().all()

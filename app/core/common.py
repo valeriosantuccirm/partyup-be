@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, Tuple, overload
+from typing import Any, Literal, overload
 from uuid import UUID, uuid4
 
 import httpx
@@ -23,7 +23,7 @@ from app.database.models.psql.user import User
 
 async def is_user_unique_params_already_assigned(
     db_session: PSQLSessionManager,
-    domain_attribute_pairs: Tuple[Tuple[str, Any], ...],
+    domain_attribute_pairs: tuple[tuple[str, Any], ...],
 ) -> bool:
     """
     Check if a unique parameter is already assigned within a given domain.
@@ -36,14 +36,14 @@ async def is_user_unique_params_already_assigned(
     Returns:
         :bool: True if the parameter is already assigned, False otherwise.
     """
-    clauses: List[ColumnElement] = []
+    clauses: list[ColumnElement[Any]] = []
     for pair in domain_attribute_pairs:
         clauses.append(getattr(User, pair[0]) == pair[1])
     count: int = await db_session.count(
         model=User,
         clauses=clauses,
     )
-    return True if count else False
+    return bool(count)
 
 
 async def are_user_info_complete(
@@ -66,7 +66,7 @@ async def are_user_info_complete(
     Returns:
         :bool: True if all the conditions are satisfied. False otherwise.
     """
-    if (
+    return not (
         not user.first_name
         or not user.last_name
         or not user.date_of_birth
@@ -74,16 +74,14 @@ async def are_user_info_complete(
         or not user.username
         or not user.location_name
         or not user.location
-    ):
-        return False
-    return True
+    )
 
 
 async def upload_content_to_s3(
     media_content: UploadFile,
     dirpath: Literal["user-profiles", "event-media"],
     ext: str,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     try:
         content_data: bytes = media_content.file.read()
         content_filename: str = f"{dirpath}/{uuid4()}.{ext}"
@@ -94,6 +92,7 @@ async def upload_content_to_s3(
             ContentType=media_content.content_type,
             ACL="public-read",  # Make the image publicly accessible
         )
+        del content_data
         return (
             f"https://{settings.AWS_BUCKET_NAME}.s3.amazonaws.com/{content_filename}",
             content_filename,
@@ -101,10 +100,8 @@ async def upload_content_to_s3(
     except Exception as e:
         raise AWSException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Error uploading media content: {str(e)}",
-        )
-    finally:
-        del content_data
+            detail=f"Error uploading media content: {e!s}",
+        ) from e
 
 
 async def delete_content_from_s3(
@@ -118,8 +115,8 @@ async def delete_content_from_s3(
     except Exception as e:
         raise AWSException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Error deliting media content: {str(e)}",
-        )
+            detail=f"Error deliting media content: {e!s}",
+        ) from e
 
 
 async def find_es_and_psql_user_event(
@@ -127,7 +124,7 @@ async def find_es_and_psql_user_event(
     db_session: PSQLSessionManager,
     user: User,
     event_guid: UUID,
-) -> Tuple[Event, ESEvent]:
+) -> tuple[Event, ESEvent]:
     psql_event: Event | None = await db_session.find_one_or_none(
         model=Event,
         criteria=(Column("guid") == event_guid,),
@@ -139,7 +136,7 @@ async def find_es_and_psql_user_event(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Event with guid '{event_guid}' not found in PSQL DB",
         )
-    q: Dict[str, Any] = common_q.find_by_attr(
+    q: dict[str, Any] = common_q.find_by_attr(
         creator_guid=user.guid,
         guid=psql_event.guid,
     )
@@ -163,7 +160,7 @@ async def find_es_and_psql_user_event(
 async def search_map_location(
     query: str | None,
     limit: int = 5,
-) -> List[Dict[str, Any]]: ...
+) -> list[dict[str, Any]]: ...
 
 
 @overload
@@ -171,15 +168,15 @@ async def search_map_location(
     query: str | None,
     limit: int = 5,
     first: bool = False,
-) -> Dict[str, Any] | None: ...
+) -> dict[str, Any] | None: ...
 
 
 async def search_map_location(
     query: str | None,
     limit: int = 5,
     first: bool = False,
-) -> List[Dict[str, Any]] | Dict[str, Any] | None:
-    data: List[Dict[str, Any]] = []
+) -> list[dict[str, Any]] | dict[str, Any] | None:
+    data: list[dict[str, Any]] = []
     async with httpx.AsyncClient() as client:
         response: httpx.Response = await client.get(
             url=settings.NOMINATIM_URL,
@@ -203,7 +200,7 @@ async def get_file_extension(
 ) -> str:
     ext: str = ""
     if media_filename:
-        splitted: List[str] = media_filename.split(sep=".")
+        splitted: list[str] = media_filename.split(sep=".")
         if len(splitted) > 1:
             ext = f".{splitted[-1]}"
     return ext

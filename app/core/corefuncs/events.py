@@ -1,8 +1,7 @@
-import json
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
-from fastapi import Depends, UploadFile
+from fastapi import UploadFile
 from sqlalchemy import Column
 from starlette import status
 
@@ -30,9 +29,7 @@ from app.database.models.psql.event_attendee import EventAttendee
 from app.database.models.psql.media import Media
 from app.database.models.psql.user import User
 from app.database.models.psql.user_follower import UserFollower
-from app.database.redis import RedisClient
 from app.datamodels.schemas.response import PaginatedEvents
-from app.depends.depends import get_redis_client
 from celery_app.tasks.events_tasks import (
     celery_join_public_event,
     celery_revoke_join_event,
@@ -49,7 +46,7 @@ async def get_leaderboard_events(
     limit: int = 10,
     offset: int = 0,
 ) -> PaginatedEvents:
-    q: Dict[str, Any] = events_q.build_leaderboard_events(
+    q: dict[str, Any] = events_q.build_leaderboard_events(
         creator_guid=user.guid,
         status=status,
         user_bio=user.bio,
@@ -59,7 +56,7 @@ async def get_leaderboard_events(
         limit=limit,
         offset=offset,
     )
-    events: List[ESEvent] = await esclient.find(
+    events: list[ESEvent] = await esclient.find(
         index=settings.ES_EVENTS_INDEX,
         query=q,
         model=ESEvent,
@@ -83,7 +80,7 @@ async def search_events(
     limit: int = 10,
     offset: int = 0,
 ) -> PaginatedEvents:
-    q: Dict[str, Any] = events_q.search_events(
+    q: dict[str, Any] = events_q.search_events(
         creator_guid=user.guid,
         status=status,
         user_input=user_input,
@@ -95,7 +92,7 @@ async def search_events(
         limit=limit,
         offset=offset,
     )
-    events: List[ESEvent] = await esclient.find(
+    events: list[ESEvent] = await esclient.find(
         index=settings.ES_EVENTS_INDEX,
         query=q,
         model=ESEvent,
@@ -114,7 +111,6 @@ async def upload_user_event_media(
     user: User,
     media_content: UploadFile,
     event_guid: UUID,
-    redis_client: RedisClient = Depends(dependency=get_redis_client),
 ) -> Media:
     event: Event | None = await db_session.find_one_or_none(
         model=Event,
@@ -151,18 +147,6 @@ async def upload_user_event_media(
     await esclient.add(
         index=settings.ES_MEDIA_INDEX,
         instance=es_media,
-    )
-    # ✅ **Publish the event update to Redis**
-    redis_channel: str = f"event_media:{event_guid}"
-    redis_message = {
-        "event_guid": str(event_guid),
-        "user_guid": str(user.guid),
-        "file_url": file_url,
-        "media_type": MediaType.PHOTO.value,
-    }
-    redis_client = await get_redis_client()
-    await redis_client.redis.publish(  # type: ignore[awaitable]
-        channel=redis_channel, message=json.dumps(redis_message)
     )
     return psql_media
 
@@ -223,7 +207,7 @@ async def join_public_event(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with guid '{psql_event.creator_guid}' not found",
         )
-    celery_join_public_event.apply_async(
+    celery_join_public_event.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
         args=(
             event_attendee.model_dump(),
             psql_event.total_attendees_count,
@@ -293,7 +277,7 @@ async def revoke_join_event(
     await db_session.delete(
         instance=psql_event_attendee,
     )
-    celery_revoke_join_event.apply_async(
+    celery_revoke_join_event.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
         args=(
             user.guid,
             psql_event.followers_attendees_count,

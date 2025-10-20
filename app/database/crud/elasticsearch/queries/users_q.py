@@ -1,16 +1,16 @@
-from typing import Any, Dict, List, Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from app.database.models.enums.hiver import HiverRequestStatus
 
 
 def find_users(
-    psql_guids: List[UUID],
+    psql_guids: list[UUID],
     limit: int,
     offset: int,
-    source: List[str] = [],
-) -> Dict[str, Any]:
-    q: Dict[str, Any] = {
+    source: list[str] = [],
+) -> dict[str, Any]:
+    q: dict[str, Any] = {
         "from": offset,
         "size": limit,
         "query": {
@@ -37,13 +37,13 @@ def find_user_hiver_requests(
     mode: Literal["sent", "received"],
     limit: int,
     offset: int,
-    source: List[str] = [],
-) -> Dict[str, Any]:
-    _map: Dict[str, str] = {
+    source: list[str] = [],
+) -> dict[str, Any]:
+    _map: dict[str, str] = {
         "sent": "sender_guid",
         "received": "receiver_guid",
     }
-    q: Dict[str, Any] = {
+    q: dict[str, Any] = {
         "size": limit,
         "from": offset,
         "query": {
@@ -84,10 +84,10 @@ def find_user_hivers(
     psql_user_guid: UUID,
     limit: int,
     offset: int,
-    source: List[str] = [],
-    last_sort_values: List[Any] = [],
-) -> Dict[str, Any]:
-    q: Dict[str, Any] = {
+    source: list[str] = [],
+    last_sort_values: list[Any] = [],
+) -> dict[str, Any]:
+    q: dict[str, Any] = {
         "from": offset,
         "size": limit,
         "query": {
@@ -125,17 +125,17 @@ def find_public_users(
     user_guid: str,
     user_username: str | None,
     user_fullname: str | None,
-    user_hiver_guids: List[UUID],
-    user_follower_guids: List[UUID],
+    user_hiver_guids: list[UUID],
+    user_follower_guids: list[UUID],
     user_input: str,
     user_lat: float | None,
     user_lon: float | None,
     radius: int = 50,
     limit: int = 20,
     offset: int = 0,
-    source: List[str] = [],
-) -> Dict[str, Any]:
-    q: Dict[str, Any] = {
+    source: list[str] = [],
+) -> dict[str, Any]:
+    q: dict[str, Any] = {
         "size": limit,
         "from": offset,
         "query": {
@@ -276,12 +276,12 @@ def find_public_users(
 def find_linked_users_ids(
     left_index: str,
     right_index: str,
-    left_term: Dict[str, Any],
-    right_term: Dict[str, Any],
-    left_source: List[str] = [],
-    right_source: List[str] = [],
-) -> List[Dict[str, Any]]:
-    qs: List[Dict[str, Any]] = [
+    left_term: dict[str, Any],
+    right_term: dict[str, Any],
+    left_source: list[str] = [],
+    right_source: list[str] = [],
+) -> list[dict[str, Any]]:
+    qs: list[dict[str, Any]] = [
         {
             "index": left_index,
         },

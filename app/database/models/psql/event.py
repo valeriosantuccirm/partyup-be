@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from geoalchemy2 import Geometry
@@ -44,6 +43,7 @@ class Event(SQLModel, table=True):
         :updated_at (datetime): The timestamp when the event was last updated.
     """
 
+    cancellable_until: datetime | None = Field(default=None, nullable=True)
     creator_popularity_score: StrictFloat = Field(default=0.0)
     cover_image_filename: StrictStr | None = Field(default=None, nullable=True)
     cover_image_url: StrictStr | None = Field(default=None, nullable=True)  # AWS S3 URL
@@ -68,7 +68,7 @@ class Event(SQLModel, table=True):
     public_attendees_count: StrictInt = Field(default=0, nullable=False)
     start_date: datetime = Field(default=..., nullable=False)
     status: EventStatus = Field(default=EventStatus.UPCOMING, nullable=False)
-    tags: Optional[List[str]] = Field(
+    tags: list[str] | None = Field(
         default_factory=list, sa_column=Column(ARRAY(item_type=String))
     )
     title: StrictStr = Field(default=..., nullable=False)

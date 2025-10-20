@@ -52,10 +52,10 @@ docker run -d --name localstack -p 4566:4566 -p 4510:4510 -e LOCALSTACK_UI=true 
 ```
 
 #### 🔹 Explanation
-✅ `-d` → Runs in the background  
-✅ `-p 4566:4566` → Exposes LocalStack services (S3 runs on `4566`)  
-✅ `-e SERVICES=s3` → Starts only **S3** (you can add more services)  
-✅ `-e AWS_ACCESS_KEY_ID=test` & `AWS_SECRET_ACCESS_KEY=test` → Fake AWS credentials for local testing  
+✅ `-d` → Runs in the background
+✅ `-p 4566:4566` → Exposes LocalStack services (S3 runs on `4566`)
+✅ `-e SERVICES=s3` → Starts only **S3** (you can add more services)
+✅ `-e AWS_ACCESS_KEY_ID=test` & `AWS_SECRET_ACCESS_KEY=test` → Fake AWS credentials for local testing
 
 ### 2️⃣ Configure AWS CLI for LocalStack
 Run the following commands to set up AWS CLI:

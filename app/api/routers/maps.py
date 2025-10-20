@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Query
 from pydantic import StrictStr
@@ -12,12 +12,12 @@ router = APIRouter(prefix="/maps")
 @router.get(
     path="/location/search",
     status_code=status.HTTP_200_OK,
-    response_model=List[maps.MapsLocation],
+    response_model=list[maps.MapsLocation],
     description="Search for locations based on user input.",
 )
 async def search_location(
     user_input: Annotated[StrictStr, Query(default=...)],
-) -> List[maps.MapsLocation]:
+) -> list[maps.MapsLocation]:
     """
     Search for locations based on user input.
 

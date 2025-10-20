@@ -1,9 +1,10 @@
 import os
 from functools import lru_cache
-from typing import Dict, Tuple
+from pathlib import Path
 
 import boto3
 import firebase_admin
+from argon2 import PasswordHasher
 from botocore.client import BaseClient
 from dotenv import load_dotenv
 from elasticsearch import AsyncElasticsearch
@@ -69,6 +70,13 @@ class Settings(BaseSettings):
     AUTH_PROVIDER_X509_CERT_URL: str
     CLIENT_X509_CERT_URL: str
     UNIVERSE_DOMAIN: str
+    ## GOOGLE PUB/SUB
+    GOOGLE_PROJECT_ID: str
+    # ELASTIC
+    GOOGLE_ELASTIC_USERS_TOPIC_ID: str
+    ## STRIPE
+    STRIPE_SECRET_API_KEY: str
+    APP_PERC_FEE: float
 
     @property
     def DB_URI(cls) -> str:
@@ -87,8 +95,8 @@ class Settings(BaseSettings):
         return os.environ.get("AWS_ENDPOINT_URL", default="http://localhost:4566")
 
     @property
-    def FIREBASE_CONFIG(cls) -> Dict[str, str]:
-        keys: Tuple[str, ...] = (
+    def FIREBASE_CONFIG(cls) -> dict[str, str]:
+        keys: tuple[str, ...] = (
             "type",
             "project_id",
             "private_key_id",
@@ -101,7 +109,7 @@ class Settings(BaseSettings):
             "client_x509_cert_url",
             "universe_domain",
         )
-        conf: Dict[str, str] = {}
+        conf: dict[str, str] = {}
         for k in keys:
             conf[k] = getattr(cls, k.upper())
         return conf
@@ -116,7 +124,7 @@ class Settings(BaseSettings):
 
 @lru_cache
 def _settings() -> Settings:
-    return Settings()
+    return Settings()  # pyright: ignore[reportCallIssue]
 
 
 settings: Settings = _settings()
@@ -137,7 +145,9 @@ redis: Redis = Redis(
     password=settings.REDIS_PSW,
 )
 # init Firebase FCM
-fcm_cred = credentials.Certificate(cert=settings.FIREBASE_CONFIG)
+fcm_cred: credentials.Certificate = credentials.Certificate(
+    f"{Path(__file__).resolve().cwd()!s}/.creds/partyup-be-aaf0d-firebase-adminsdk-fbsvc-6059566557.json"
+)
 firebase_admin.initialize_app(credential=fcm_cred)
 # Email config
 emailenv = Environment(
@@ -154,4 +164,12 @@ emailconfig = ConnectionConfig(
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=True,
     VALIDATE_CERTS=True,
+)
+# password hasher
+ph = PasswordHasher(
+    time_cost=3,  # number of iterations
+    memory_cost=64 * 1024,  # 64 MiB
+    parallelism=4,
+    hash_len=32,
+    salt_len=16,
 )

@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 from uuid import UUID
 
 from pydantic import (
@@ -153,7 +152,7 @@ class PaginatedEvents(Paginated):
         :events (List[ESEvent]): A list of events.
     """
 
-    events: List[ESEvent] = Field(default=[])
+    events: list[ESEvent] = Field(default=[])
 
 
 class PaginatedListedUser(Paginated):
@@ -164,7 +163,7 @@ class PaginatedListedUser(Paginated):
         :listed_users (List[ESListedUser]): A list of listed users.
     """
 
-    listed_users: List[ESListedUser] = Field(default=...)
+    listed_users: list[ESListedUser] = Field(default=...)
 
 
 class MapsLocation(BaseModel):

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 from uuid import UUID
 
 from app.database.models.enums.event import EventStatus
@@ -9,9 +9,9 @@ def find_user_events(
     status: EventStatus | None = None,
     limit: int = 10,
     offset: int = 0,
-    source: List[str] = [],
-) -> Dict[str, Any]:
-    base_query: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
+    source: list[str] = [],
+) -> dict[str, Any]:
+    base_query: dict[str, dict[str, list[dict[str, Any]]]] = {
         "bool": {
             "must": [
                 {
@@ -31,7 +31,7 @@ def find_user_events(
             }
         )
 
-    q: Dict[str, Any] = {
+    q: dict[str, Any] = {
         "query": base_query,
         "sort": [
             {
@@ -57,9 +57,9 @@ def build_leaderboard_events(
     radius: int = 10,
     limit: int = 10,
     offset: int = 0,
-    source: List[str] = [],
-) -> Dict[str, Any]:
-    q: Dict[str, Any] = {
+    source: list[str] = [],
+) -> dict[str, Any]:
+    q: dict[str, Any] = {
         "size": limit,
         "from": offset,
         "query": {
@@ -142,9 +142,9 @@ def search_events(
     radius: int = 10,
     limit: int = 10,
     offset: int = 0,
-    source: List[str] = [],
-) -> Dict[str, Any]:
-    q: Dict[str, Any] = {
+    source: list[str] = [],
+) -> dict[str, Any]:
+    q: dict[str, Any] = {
         "size": limit,
         "from": offset,
         "query": {
@@ -266,10 +266,10 @@ def search_events(
 
 def find_event_attendees(
     event_guid: UUID,
-    user_guids: List[UUID],
-    source: List[str] = [],
-) -> Dict[str, Any]:
-    q: Dict[str, Any] = {
+    user_guids: list[UUID],
+    source: list[str] = [],
+) -> dict[str, Any]:
+    q: dict[str, Any] = {
         "bool": {
             "must": [
                 {

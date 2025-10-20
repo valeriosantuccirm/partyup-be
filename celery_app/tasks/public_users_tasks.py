@@ -1,6 +1,6 @@
 import asyncio
 from asyncio import AbstractEventLoop
-from typing import Any, Dict
+from typing import Any
 from uuid import UUID
 
 from kombu import Queue
@@ -31,7 +31,7 @@ celery_app.conf.task_routes = {
 
 @celery_app.task
 def celery_follow_user(
-    user_follower_dict: Dict[str, Any],
+    user_follower_dict: dict[str, Any],
     psql_followed_user_guid: UUID,
     user_guid: UUID,
     user_username: str,
@@ -106,7 +106,7 @@ async def celery_unfollow_user(
     esclient: ElasticsearchClient = loop.run_until_complete(
         future=get_es_query_service()
     )
-    q: Dict[str, Any] = common_q.find_by_attr(guid=psql_user_follower_guid)
+    q: dict[str, Any] = common_q.find_by_attr(guid=psql_user_follower_guid)
     es_user_follower: ESUserFollower | None = loop.run_until_complete(
         future=esclient.find(
             index=settings.ES_USER_FOLLOWERS_INDEX,
@@ -169,7 +169,7 @@ async def celery_unfollow_user(
 
 @celery_app.task
 def celery_send_hiver_request(
-    hiver_request_dict: Dict[str, Any],
+    hiver_request_dict: dict[str, Any],
     user_username: str,
     user_profile_image: str,
     receiver_fcm_token: str | None = None,
