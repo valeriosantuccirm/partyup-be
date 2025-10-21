@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from pydantic import StrictStr
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
 from app.database.models.enums.media import MediaType
 

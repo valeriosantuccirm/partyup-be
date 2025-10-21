@@ -1,6 +1,8 @@
+import json
 from typing import Any
 from uuid import UUID
 
+from cryptography.fernet import Fernet
 from fastapi import UploadFile
 from sqlalchemy import Column
 from starlette import status
@@ -34,6 +36,7 @@ from celery_app.tasks.events_tasks import (
     celery_join_public_event,
     celery_revoke_join_event,
 )
+from pubsub_workers.payments.src.schema.qr_data import QRData
 
 
 async def get_leaderboard_events(
@@ -291,3 +294,20 @@ async def revoke_join_event(
         queue="partyup_events_queue",
         priority=1,
     )
+
+
+async def aknowledge_data_by_scanned_qr_code(
+    db_session: PSQLSessionManager,
+    user: User,
+    token: str,
+):
+    f = Fernet(settings.FERNET_KEY)
+
+    plaintext_bytes: bytes = f.decrypt(token.encode("utf-8"))
+    qrdata = QRData(**json.loads(plaintext_bytes.decode("utf-8")))
+
+    user_event = await db_session.find_one_or_none(
+        model=Event, criteria=(Column("creator_guid") == qrdata.creator.guid,)
+    )
+
+    return qrdata

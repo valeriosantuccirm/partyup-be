@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
 
 class UserHiver(SQLModel, table=True):
@@ -15,7 +15,7 @@ class UserHiver(SQLModel, table=True):
         :user_guid (UUID): The id of the user linked to the user hiver.
     """
 
-    __tablename__: str = "user_hiver"
+    __tablename__: str = "user_hiver"  # pyright: ignore[reportIncompatibleVariableOverride]
 
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
     guid: UUID = Field(

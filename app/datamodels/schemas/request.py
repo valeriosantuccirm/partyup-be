@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -232,5 +232,5 @@ class UserEventUpdateExtendedRequest(UserEventUpdateRequest):
 class ScheduledPaymentRequest(BaseModel):
     amount: StrictFloat = Field(default=0.0)
     currency: Currency = Field(default=Currency.eur)
-    due_date: date = Field(default=...)
+    event_date: datetime = Field(default=...)
     paye_account_guid: UUID = Field(default=...)

@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from pydantic import EmailStr, StrictStr
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
 
 class StripeCustomer(SQLModel, table=True):
@@ -13,7 +13,7 @@ class StripeCustomer(SQLModel, table=True):
 
     """
 
-    __tablename__: str = "stripe_customer"
+    __tablename__: str = "stripe_customer"  # pyright: ignore[reportIncompatibleVariableOverride]
 
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
     cus_id: StrictStr = Field(default=..., nullable=False, unique=True)

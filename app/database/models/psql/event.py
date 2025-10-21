@@ -5,7 +5,11 @@ from geoalchemy2 import Geometry
 from pydantic import StrictBool, StrictFloat, StrictInt, StrictStr
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlmodel import Column, Field, SQLModel
+from sqlmodel import (
+    Column,
+    Field,  # pyright: ignore[reportUnknownVariableType]
+    SQLModel,
+)
 
 from app.database.models.enums.event import EventStatus
 

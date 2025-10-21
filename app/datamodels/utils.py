@@ -35,3 +35,22 @@ def to_stripe_amount_cents(
     if currency.value.lower() in ZERO_DECIMAL_CURRENCIES:
         return int(amount.to_integral_value(rounding=ROUND_HALF_UP))
     return int((amount * 100).to_integral_value(rounding=ROUND_HALF_UP))
+
+
+def from_stripe_amount_cents(
+    amount_cents: int,
+    currency: Currency = Currency.eur,
+) -> Decimal:
+    """
+    Convert Stripe's integer amount (in smallest unit) back to a normal decimal amount.
+    """
+    ZERO_DECIMAL_CURRENCIES: set[str] = {"jpy", "krw"}
+
+    if currency.value.lower() in ZERO_DECIMAL_CURRENCIES:
+        # No fractional part — 100 JPY = 100 (no cents)
+        return Decimal(amount_cents).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    else:
+        # Convert cents to decimal currency (e.g., 1099 → 10.99)
+        return (Decimal(amount_cents) / 100).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )

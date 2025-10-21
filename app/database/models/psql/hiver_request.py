@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
 from app.database.models.enums.hiver import HiverRequestStatus
 
@@ -18,7 +18,7 @@ class HiverRequest(SQLModel, table=True):
         :status (HiverRequestStatus): Request status. Defaults to HiverRequestStatus.PENDING.
     """
 
-    __tablename__: str = "hiver_request"
+    __tablename__: str = "hiver_request"  # pyright: ignore[reportIncompatibleVariableOverride]
 
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
     guid: UUID = Field(default_factory=uuid4, primary_key=True, index=True)

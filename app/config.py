@@ -77,6 +77,8 @@ class Settings(BaseSettings):
     ## STRIPE
     STRIPE_SECRET_API_KEY: str
     APP_PERC_FEE: float
+    ## MISC
+    FERNET_KEY: str
 
     @property
     def DB_URI(cls) -> str:

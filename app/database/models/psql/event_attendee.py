@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
 from app.database.models.enums.event import AttendeeType, EventAttendeeStatus
 
@@ -21,7 +21,7 @@ class EventAttendee(SQLModel, table=True):
         :user_guid (UUID): The id of the user attending the event.
     """
 
-    __tablename__: str = "event_attendee"
+    __tablename__: str = "event_attendee"  # pyright: ignore[reportIncompatibleVariableOverride]
 
     attendee_type: AttendeeType = Field(default=..., nullable=False)
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)

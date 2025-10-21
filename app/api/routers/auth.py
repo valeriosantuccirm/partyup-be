@@ -1,4 +1,6 @@
+from datetime import date, timedelta
 from typing import Annotated, Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, Path, Request
 from pydantic import StrictStr
@@ -12,10 +14,17 @@ from app.database.models.psql.user import User
 from app.database.session import psql_session_manager
 from app.datamodels.schemas.auth import FCMToken, FirebaseUser, Token
 from app.datamodels.schemas.request import UserCreateBase
+from app.datamodels.utils import from_stripe_amount_cents
 from app.depends.depends import (
     get_current_user,
     get_es_query_service,
     get_firebase_user,
+)
+from pubsub_workers.payments.src.qrcode.generator import create_partyup_ticket
+from pubsub_workers.payments.src.schema.qr_data import (
+    BaseQRCodeData,
+    BaseQRCodePaymentData,
+    QRData,
 )
 
 router = APIRouter(prefix="/auth")
@@ -61,6 +70,28 @@ async def login_by_email_and_password(
     """
     EMAIL = "valerio.santucci@gmail.com"
     PSWD = "12romanistA!"
+    c = await create_partyup_ticket(
+        qrdata=QRData(
+            event=BaseQRCodeData(
+                name="Trasloco da Roma a Kufstein!",
+                guid=uuid4(),
+            ),
+            attendee=BaseQRCodeData(
+                name="Valerio Santucci",
+                guid=uuid4(),
+            ),
+            creator=BaseQRCodeData(
+                name="Erica Pitti",
+                guid=uuid4(),
+            ),
+            payment=BaseQRCodePaymentData(
+                status="success",
+                amount=float(from_stripe_amount_cents(15089)),
+                currency="EUR",
+                timestamp=date.today() + timedelta(5),
+            ),
+        )
+    )
     return await authfuncs.login_with_eamil_and_pswd(
         db_session=db_session,
         # email=email,

@@ -53,19 +53,21 @@ async def attach_payment_method_to_user(
 
 
 @router.post(
-    path="/schedule",
+    path="/{event_guid}/schedule",
     response_model=ScheduledPayment,
     status_code=status.HTTP_201_CREATED,
 )
 async def schedule_payment_intent(
     db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
     user: Annotated[User, Depends(dependency=admit_user)],
+    event_guid: Annotated[UUID, Path(default=...)],
     payload: Annotated[ScheduledPaymentRequest, Body(default=...)],
 ) -> ScheduledPayment:
     """ """
     return await payments.schedule_payment_intent(
         db_session=db_session,
         user=user,
+        event_guid=event_guid,
         payload=payload,
     )
 

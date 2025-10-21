@@ -1,7 +1,7 @@
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Path, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Path, Query, UploadFile
 from pydantic import StrictStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
@@ -161,3 +161,15 @@ async def revoke_join_public_event(
         user=user,
         event_guid=event_guid,
     )
+
+
+@router.post(
+    path="/qrcode/aknowledge",
+    status_code=status.HTTP_200_OK,
+)
+async def read_event_generated_qrcode(
+    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    user: Annotated[User, Depends(dependency=get_attendee)],
+    token: Annotated[str, Body(default=...)],
+) -> Any:
+    return await events.aknowledge_data_by_scanned_qr_code()

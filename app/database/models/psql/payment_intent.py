@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from pydantic import StrictFloat, StrictStr
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
 
 class PaymentIntent(SQLModel, table=True):
@@ -13,7 +13,7 @@ class PaymentIntent(SQLModel, table=True):
 
     """
 
-    __tablename__: str = "payment_intent"
+    __tablename__: str = "payment_intent"  # pyright: ignore[reportIncompatibleVariableOverride]
 
     app_fee_amount: StrictFloat | None = Field(default=None, nullable=True)
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)

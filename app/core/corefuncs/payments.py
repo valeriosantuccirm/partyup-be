@@ -1,3 +1,4 @@
+from datetime import timedelta
 from uuid import UUID
 
 import stripe
@@ -78,6 +79,7 @@ async def attach_payment_method(
 async def schedule_payment_intent(
     db_session: PSQLSessionManager,
     user: User,
+    event_guid: UUID,
     payload: ScheduledPaymentRequest,
 ) -> ScheduledPayment:
     # Attach the payment method
@@ -88,7 +90,8 @@ async def schedule_payment_intent(
     if not customer or not customer.payment_method_id:
         raise APIException(api_context="user")
     scheduled_payment: ScheduledPayment = ScheduledPayment(
-        due_date=payload.due_date,
+        due_date=payload.event_date.date()
+        - timedelta(days=2),  # payment scheduled 2 days before event date
         stripe_customer_guid=customer.guid,
         amount_cents=to_stripe_amount_cents(
             amount=payload.amount,
@@ -96,6 +99,7 @@ async def schedule_payment_intent(
         ),
         currency=payload.currency,
         stripe_payee_account_guid=payload.paye_account_guid,
+        event_guid=event_guid,
     )
     await db_session.add(scheduled_payment)
     return scheduled_payment

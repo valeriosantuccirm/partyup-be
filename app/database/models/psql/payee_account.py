@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from pydantic import StrictStr
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
 from app.database.models.enums.payee_account import CountryCode
 
@@ -15,7 +15,7 @@ class PayeeAccount(SQLModel, table=True):
 
     """
 
-    __tablename__: str = "payee_account"
+    __tablename__: str = "payee_account"  # pyright: ignore[reportIncompatibleVariableOverride]
 
     account_id: StrictStr = Field(default=..., nullable=False, unique=True)
     country_code: CountryCode = Field(default=..., nullable=False)
