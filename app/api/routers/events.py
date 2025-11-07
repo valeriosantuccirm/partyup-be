@@ -19,6 +19,7 @@ from app.depends.depends import admit_user, get_attendee
 
 router = APIRouter(prefix="/events")
 
+
 @router.get(
     path="/leaderboard",
     response_model=PaginatedEvents,

@@ -29,6 +29,7 @@ from jobs.payments.src.schema.qr_data import (
 
 router = APIRouter(prefix="/auth")
 
+
 @router.post(
     path="/signup/email",
     status_code=status.HTTP_201_CREATED,

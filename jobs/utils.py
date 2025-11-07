@@ -49,5 +49,6 @@ def extract_model_data[
 async def elastic() -> ElasticsearchClient:
     return await anext(esclient())
 
+
 async def psql() -> PSQLClient:
     return await anext(psqlclient())

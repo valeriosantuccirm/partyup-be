@@ -42,7 +42,6 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, Any]:
     # 🚀 3 Connect to Elasticsearch
     print("🔗 Connecting to Elasticsearch...")
 
-
     yield  # App runs during this phase
 
     # 🚀 4 Cleanup Redis and Elasticsearch

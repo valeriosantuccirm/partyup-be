@@ -218,7 +218,6 @@ async def unfollow_user(
     )
 
 
-
 async def send_hiver_request(
     esclient: ElasticsearchClient,
     db_session: PSQLClient,

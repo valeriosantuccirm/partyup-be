@@ -55,4 +55,3 @@ async def process_daily_pending_payments() -> None:
         )
     except Exception as e:
         raise e
-

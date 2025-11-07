@@ -15,6 +15,7 @@ from app.depends.depends import get_current_user
 
 router = APIRouter(prefix="/users/me/profile")
 
+
 @router.get(
     path="",
     description="Retrieve the details of the currently logged-in user.",

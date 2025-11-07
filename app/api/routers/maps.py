@@ -9,6 +9,7 @@ from app.core.decorators import manage_transaction
 
 router = APIRouter(prefix="/maps")
 
+
 @router.get(
     path="/location/search",
     status_code=status.HTTP_200_OK,

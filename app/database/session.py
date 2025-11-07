@@ -19,6 +19,7 @@ async_session_factory: sessionmaker[Session] = sessionmaker(
     expire_on_commit=False,
 )
 
+
 async def psqlclient() -> AsyncGenerator[PSQLClient, Any]:
     async with async_session_factory() as session:  # type: ignore
         yield PSQLClient(

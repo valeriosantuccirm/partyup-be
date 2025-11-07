@@ -17,6 +17,7 @@ from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/users/me/hivers")
 
+
 @router.put(
     path="/requests/{hiver_request_guid}/respond",
     status_code=status.HTTP_204_NO_CONTENT,

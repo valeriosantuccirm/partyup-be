@@ -14,6 +14,7 @@ from app.depends.depends import get_redis_client
 
 wsrouter = APIRouter(prefix="/ws/stream/events")
 
+
 @wsrouter.websocket(
     path="/{event_guid}",
     name="live-event-media-stream",

@@ -8,7 +8,7 @@ from app.main import app
 
 
 @pytest.fixture
-def client() -> Generator[TestClient, Any, None]:
+def client() -> Generator[TestClient, Any]:
     yield TestClient(app=app)
 
 

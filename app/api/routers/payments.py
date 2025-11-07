@@ -18,6 +18,7 @@ from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/payments")
 
+
 @router.post(
     path="/customer",
     response_model=StripeCustomer,

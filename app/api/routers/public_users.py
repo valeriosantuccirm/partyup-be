@@ -18,6 +18,7 @@ from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/users/public")
 
+
 @router.get(
     path="/search",
     response_model=PaginatedListedUser,
