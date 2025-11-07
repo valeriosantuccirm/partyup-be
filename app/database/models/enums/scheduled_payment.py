@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class _MappedNameCurrency(Enum):
+class _MappedNameCurrency(Enum):  # type: ignore
     AED = "United Arab Emirates Dirham"
     AFN = "Afghan Afghani"
     ALL = "Albanian Lek"

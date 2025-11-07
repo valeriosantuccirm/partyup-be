@@ -56,50 +56,59 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
             if conn_var in kwargs:
                 _session = kwargs[conn_var]
                 break
-        _session = _session if _session else AsyncSession()
         try:
-            async with _session.begin():
+            if _session:
+                async with _session.begin():
+                    rv: Any = await func(*args, **kwargs)
+                    await _session.flush()
+                    await _session.commit()
+                    return rv
+            else:
                 rv: Any = await func(*args, **kwargs)
-                await _session.flush()
-                await _session.commit()
-                return rv
         except (APIException, DBException, AWSException) as e:
-            await _session.rollback()
+            if _session:
+                await _session.rollback()
             raise e
         except (ValueError, TypeError) as e:
             logger.error(traceback.format_exc())
-            await _session.rollback()
+            if _session:
+                await _session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=e.args,
             ) from e
         except (IntegrityError, UniqueViolationError) as e:
             logger.error(traceback.format_exc())
-            await _session.rollback()
+            if _session:
+                await _session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=e.args,
             ) from e
         except KeyError as e:
             logger.error(traceback.format_exc())
-            await _session.rollback()
+            if _session:
+                await _session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=e.args,
             ) from e
         except HTTPException as e:
             logger.error(traceback.format_exc())
-            await _session.rollback()
+            if _session:
+                await _session.rollback()
             raise e
         except Exception as e:
             logger.error(traceback.format_exc())
-            await _session.rollback()
+            if _session:
+                await _session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=e.args,
             ) from e
         finally:
-            await _session.close()
+            if _session:
+                await _session.close()
 
     return wrapper
 
@@ -161,43 +170,3 @@ def cache_result(key: str, ttl: int) -> Any:
         return wrapper
 
     return decorator
-
-
-def clean_session(func: Callable[..., Any]) -> Any:
-    """
-    Decorator for managing database pending transactions when DB errors occur
-    during depends injection.
-
-    Args:
-        :func (Callable): The function to be decorated.
-
-    Returns:
-        :Any: The result of the decorated function.
-
-    Raises:
-        :HTTPException: HTTP exceptions with appropriate status codes and details.
-        :Exception: Any other unexpected exception with status code 500.
-    """
-
-    @wraps(wrapped=func)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        _session: AsyncSession = kwargs[CONN]
-        try:
-            async with _session.begin():
-                rv: Any = await func(*args, **kwargs)
-                return rv
-        except (DBException, APIException) as e:
-            logger.error(traceback.format_exc())
-            await _session.rollback()
-            await _session.close()
-            raise e
-        except Exception as e:
-            logger.error(traceback.format_exc())
-            await _session.rollback()
-            await _session.close()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=e.args,
-            ) from e
-
-    return wrapper

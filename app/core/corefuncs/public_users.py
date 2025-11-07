@@ -68,12 +68,14 @@ async def search_accounts(
             "user_guid",
         ],
     )
-    hiver_hits, follower_hits = await esclient.msearch(mquery=mqs)
+    hiver_hits, follower_hits = await esclient.msearch(mquery=mqs)  # type: ignore
     hiver_guids: set[UUID] = {
-        UUID(hex=hit["_source"]["user_guid"]) for hit in hiver_hits
+        UUID(hex=hit["_source"]["user_guid"])  # type: ignore
+        for hit in hiver_hits  # type: ignore
     }
     follower_guids: set[UUID] = {
-        UUID(hex=hit["_source"]["user_guid"]) for hit in follower_hits
+        UUID(hex=hit["_source"]["user_guid"])  # type: ignore
+        for hit in follower_hits  # type: ignore
     }
     q: dict[str, Any] = users_q.find_public_users(
         user_bio=user.bio,

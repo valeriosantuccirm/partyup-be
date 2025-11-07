@@ -1,38 +1,21 @@
-# import os
-# import sys
-
-# from logtail import LogtailHandler
-# from loguru import logger
-
-# DEFAULT_LEVEL: str = "DEBUG"
-# token: str | None = os.environ.get("LOGTAIL_SOURCE_TOKEN")
-
-# # specify severity level
-# severity_level: str = os.environ.get("LOG_SEVERITY_LEVEL", default=DEFAULT_LEVEL)
-
-# # config logger for stderr
-# logger.remove()
-# logger.add(
-#     sink=sys.stderr,
-#     backtrace=True,
-#     diagnose=True,
-#     level=DEFAULT_LEVEL,
-# )
-
-# # config logger for Logtail
-# loghandler = LogtailHandler(source_token=token)
-# logger.add(
-#     sink=loghandler,
-#     format="{time:MMMM D, YYYY - HH:mm:ss} {level} - {message}",
-#     backtrace=True,
-#     diagnose=True,
-#     level=severity_level,
-# )
-
-
+import json
 import logging
 import os
 import sys
+from typing import Any
+
+import google.cloud.logging
+from google.cloud.logging.handlers import CloudLoggingHandler
+
+IS_GCP: bool = any(
+    [
+        os.getenv("K_SERVICE"),  # Cloud Run
+        os.getenv("FUNCTION_TARGET"),  # Cloud Functions
+        os.getenv("GAE_SERVICE"),  # App Engine
+    ]
+)
+
+LOG_LEVEL: str = os.getenv("LOG_SEVERITY_LEVEL", "DEBUG").upper()
 
 # ANSI escape sequences for colors
 COLORS: dict[str, str] = {
@@ -51,7 +34,22 @@ COLORS: dict[str, str] = {
 
 # Custom formatter with color support
 class ColoredFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord) -> str:
+    def format(
+        self,
+        record: logging.LogRecord,
+    ) -> str:
+        if IS_GCP:
+            # In produzione: log strutturato (JSON)
+            log_entry: dict[str, Any] = {
+                "severity": record.levelname,
+                "logger": record.name,
+                "funcName": record.funcName,
+                "lineno": record.lineno,
+                "message": record.getMessage(),
+                "time": self.formatTime(record, self.datefmt),
+            }
+            return json.dumps(log_entry)
+
         reset: str = COLORS["RESET"]
         level_color: str = COLORS.get(record.levelname, "")
         name_color: str = COLORS["CYAN"]
@@ -69,22 +67,27 @@ class ColoredFormatter(logging.Formatter):
 
 
 # Get severity level from environment
-SECURITY_LEVEL: str = os.getenv("LOG_SEVERITY_LEVEL", "DEBUG").upper()
+logger: logging.Logger = logging.getLogger("partyup-be")
+logger.setLevel(LOG_LEVEL)
+logger.handlers.clear()
 
-# Configure root logger
-logger: logging.Logger = logging.getLogger()
-logger.setLevel(SECURITY_LEVEL)
+if IS_GCP:
+    # → Produzione: usa Cloud Logging
+    import google.cloud.logging
+    from google.cloud.logging.handlers import CloudLoggingHandler
 
-# Create handler for stderr
-handler: logging.Handler = logging.StreamHandler(sys.stderr)
-handler.setLevel(SECURITY_LEVEL)
-
-# Define log format
-formatter = ColoredFormatter(
-    fmt="%(asctime)s %(levelname)s %(name)s:%(funcName)s:%(lineno)s - %(message)s\n",
-    datefmt="%Y-%m-%d %H:%M:%S.%f",
-)
-
-handler.setFormatter(formatter)
-logger.handlers.clear()  # Remove any existing handlers
-logger.addHandler(handler)
+    client = google.cloud.logging.Client()
+    handler = CloudLoggingHandler(client)
+    handler.setLevel(LOG_LEVEL)
+    logger.addHandler(handler)
+else:
+    # Create handler for stderr
+    handler: logging.Handler = logging.StreamHandler(sys.stderr)
+    handler.setLevel(LOG_LEVEL)
+    # Define log format
+    formatter = ColoredFormatter(
+        fmt="%(asctime)s %(levelname)s %(name)s:%(funcName)s:%(lineno)s - %(message)s\n",
+        datefmt="%Y-%m-%d %H:%M:%S.%f",
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
