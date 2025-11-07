@@ -15,7 +15,7 @@ from app.constants import (
 from app.core import common, fcm
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import users_q
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_hiver_request import ESHiverRequestBase
 from app.database.models.elasticsearch.es_user import ESUser
 from app.database.models.enums.hiver import HiverRequestStatus
@@ -23,11 +23,16 @@ from app.database.models.psql.hiver_request import HiverRequest
 from app.database.models.psql.user import User
 from app.database.models.psql.user_follower import UserFollower
 from app.datamodels.schemas.response import ESListedUser, PaginatedListedUser
-from celery_app.tasks.public_users_tasks import (
-    celery_follow_user,
-    celery_send_hiver_request,
-    celery_unfollow_user,
+from app.pubsub.public_users.enums import PublicUsersPubSubEvent
+from app.pubsub.public_users.schemas import (
+    FollowUserBaseMsgData,
+    FollowUserPubSubMsg,
+    HiverRequestSendBaseMsgData,
+    HiverRequestSendPubSubMsg,
+    UnfollowUserBaseMsgbData,
+    UnfollowUserPubSubMsg,
 )
+from app.pubsub.publisher import Publisher
 
 
 async def search_accounts(
@@ -107,7 +112,7 @@ async def search_accounts(
 
 
 async def follow_user(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     user_guid: UUID,
 ) -> None:
@@ -145,22 +150,26 @@ async def follow_user(
     )
     user.following_count += 1
     psql_followed_user.followers_count += 1
-    celery_follow_user.apply_async(
-        args=(
-            user_follower.model_dump(),
-            psql_followed_user.guid,
-            user_guid,
-            user.username,
-            user.profile_image,
-            psql_followed_user.fcm_token,
-        ),
-        queue="partyup_public_users_queue",
-        priority=1,
+    publisher: Publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_USERS_TOPIC_ID,
+    )
+    await publisher.publish(
+        data=FollowUserPubSubMsg(
+            event=PublicUsersPubSubEvent.user_follow,
+            data=FollowUserBaseMsgData(
+                user_follower=user_follower,
+                psql_followed_user_guid=psql_followed_user.guid,
+                user_guid=user_guid,
+                user_username=user.username,
+                user_profile_img=user.profile_image,
+                psql_followed_user_fcm_token=psql_followed_user.fcm_token,
+            ),
+        )
     )
 
 
 async def unfollow_user(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     user_guid: UUID,
 ) -> None:
@@ -194,20 +203,25 @@ async def unfollow_user(
     await db_session.delete(
         instance=psql_user_follower,
     )
-    celery_unfollow_user.apply_async(
-        args=(
-            psql_user_follower.guid,
-            psql_followed_user.guid,
-            user.guid,
-        ),
-        queue="partyup_public_users_queue",
-        priority=2,
+    publisher: Publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_USERS_TOPIC_ID,
     )
+    await publisher.publish(
+        data=UnfollowUserPubSubMsg(
+            event=PublicUsersPubSubEvent.user_unfollow,
+            data=UnfollowUserBaseMsgbData(
+                psql_user_follower_guid=psql_user_follower.guid,
+                psql_followed_user_guid=psql_followed_user.guid,
+                user_guid=user.guid,
+            ),
+        )
+    )
+
 
 
 async def send_hiver_request(
     esclient: ElasticsearchClient,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     user_guid: UUID,
 ) -> HiverRequest:
@@ -267,15 +281,19 @@ async def send_hiver_request(
             body=f"{user.username} want joining your hive",
             image_url=user.profile_image,
         )
-    celery_send_hiver_request.apply_async(
-        args=(
-            hiver_request.model_dump(),
-            user.username,
-            user.profile_image,
-            receiver.fcm_token,
-        ),
-        queue="partyup_public_users_queue",
-        priority=3,
+    publisher: Publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_USERS_TOPIC_ID,
+    )
+    await publisher.publish(
+        data=HiverRequestSendPubSubMsg(
+            event=PublicUsersPubSubEvent.hiver_request,
+            data=HiverRequestSendBaseMsgData(
+                hiver_request=hiver_request,
+                user_username=user.username,
+                user_profile_img=user.profile_image,
+                receiver_fcm_token=receiver.fcm_token,
+            ),
+        )
     )
     return hiver_request
 
@@ -301,7 +319,7 @@ async def get_user_profile(
 
 async def remove_hiver_request(
     esclient: ElasticsearchClient,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     user_guid: UUID,
 ): ...

@@ -14,7 +14,7 @@ from app.core.common import upload_content_to_s3
 from app.core.corefuncs import user_hivers
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import events_q
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_event import ESEvent, ESEventBase
 from app.database.models.elasticsearch.es_event_attendee import ESEventAttendee
 from app.database.models.enums.event import (
@@ -30,16 +30,21 @@ from app.datamodels.schemas.request import (
     UserEventUpdateExtendedRequest,
 )
 from app.datamodels.schemas.response import PaginatedListedUser
-from celery_app.tasks.user_events_tasks import (
-    celery_cancel_user_event,
-    celery_rsvp_event_participation,
-    celery_send_event_invitations_to_hivers,
+from app.pubsub.events.enums import EventsPubSubEvent
+from app.pubsub.events.schemas import (
+    EventCancelPubSubBaseData,
+    EventCancelPubSubPubSubMsg,
+    EventInvitePubSubBaseData,
+    EventInvitePubSubPubSubMsg,
+    EventRSVPPubSubBaseData,
+    EventRSVPPubSubPubSubMsg,
 )
+from app.pubsub.publisher import Publisher
 
 
 async def create_event(
     esclient: ElasticsearchClient,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     event_request: EventCreateExtendedRequest,
 ) -> Event:
@@ -97,7 +102,7 @@ async def get_user_events(
 
 async def cancel_user_event(
     esclient: ElasticsearchClient,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     event_guid: UUID,
 ) -> None:
@@ -112,19 +117,23 @@ async def cancel_user_event(
     await db_session.update(
         instance=psql_event,
     )
-    celery_cancel_user_event.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
-        args=(
-            es_event.id,
-            psql_event.updated_at,
-        ),
-        queue="partyup_user_events_queue",
-        priority=3,
+    publisher: Publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_EVENTS_TOPIC_ID,
+    )
+    await publisher.publish(
+        data=EventCancelPubSubPubSubMsg(
+            event=EventsPubSubEvent.event_cancel,
+            data=EventCancelPubSubBaseData(
+                es_event_id=es_event.id,
+                psql_event_updated_at=psql_event.updated_at,
+            ),
+        )
     )
 
 
 async def update_user_event(
     esclient: ElasticsearchClient,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     event_guid: UUID,
     event_request: UserEventUpdateExtendedRequest,
@@ -138,7 +147,7 @@ async def update_user_event(
     )
     if psql_event.status not in (EventStatus.UPCOMING,):
         raise APIException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             api_context=USER_EVENT_API_CONTEXT,
             detail="Only an event with status 'UPCOMING' can be updated",
         )
@@ -186,7 +195,7 @@ async def update_user_event(
 
 async def send_event_invitations_to_hivers(
     esclient: ElasticsearchClient,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     event_guid: UUID,
     hivers_guids: list[UUID],
@@ -199,7 +208,7 @@ async def send_event_invitations_to_hivers(
     )
     if psql_event.status != EventStatus.UPCOMING:
         raise APIException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             api_context=USER_EVENT_API_CONTEXT,
             detail="Only for an event with status 'UPCOMING' invitations can be sent",
         )
@@ -252,20 +261,24 @@ async def send_event_invitations_to_hivers(
             await db_session.add(
                 instance=new_event_attendee,
             )
-            celery_send_event_invitations_to_hivers.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
-                args=(
-                    new_event_attendee.model_dump(),
-                    hivers_guids,
-                    psql_event.title,
-                    user.username,
-                ),
-                queue="partyup_user_events_queue",
-                priority=3,
+            publisher: Publisher = Publisher(
+                topic_id=settings.GOOGLE_ELASTIC_EVENTS_TOPIC_ID,
+            )
+            await publisher.publish(
+                data=EventInvitePubSubPubSubMsg(
+                    event=EventsPubSubEvent.event_invite_send,
+                    data=EventInvitePubSubBaseData(
+                        event_attendee=new_event_attendee,
+                        hivers_guids=hivers_guids,
+                        psql_event_title=psql_event.title,
+                        user_username=user.username,
+                    ),
+                )
             )
 
 
 async def rsvp_event_participation(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     event_guid: UUID,
     accept: bool,
@@ -283,7 +296,7 @@ async def rsvp_event_participation(
         )
     if psql_event.status != EventStatus.UPCOMING:
         raise APIException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             api_context=USER_EVENT_API_CONTEXT,
             detail="Only for an event with status 'UPCOMING' RSVP can be sent",
         )
@@ -311,14 +324,18 @@ async def rsvp_event_participation(
             detail="User already RSVP'd to the event",
         )
     psql_event_attendee.status = EventAttendeeStatus.rsvp(accept=accept)
-    celery_rsvp_event_participation.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
-        args=(
-            event_guid,
-            psql_event.guid,
-            psql_event_attendee.status.value,
-            psql_event.creator_guid,
-            user.username,
-        ),
-        queue="partyup_user_events_queue",
-        priority=2,
+    publisher: Publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_EVENTS_TOPIC_ID,
+    )
+    await publisher.publish(
+        data=EventRSVPPubSubPubSubMsg(
+            event=EventsPubSubEvent.event_invite_rsvp,
+            data=EventRSVPPubSubBaseData(
+                event_guid=event_guid,
+                psql_event_guid=psql_event.guid,
+                psql_event_attendee_status=psql_event_attendee.status,
+                psql_event_creator_guid=psql_event.creator_guid,
+                user_username=user.username,
+            ),
+        )
     )

@@ -167,3 +167,5 @@ alembic/*.mako
 env.txt
 *.json
 ___*
+# Stubs
+typings*

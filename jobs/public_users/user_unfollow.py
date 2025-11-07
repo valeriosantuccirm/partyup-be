@@ -1,0 +1,64 @@
+from fastapi import Depends
+
+from app.config import settings
+from app.database.crud.elasticsearch.esclient import ElasticsearchClient
+from app.database.crud.elasticsearch.queries import common_q
+from app.database.models.elasticsearch.es_user import ESUser
+from app.database.models.elasticsearch.es_user_follower import ESUserFollower
+from app.pubsub.public_users.schemas import UnfollowUserBaseMsgbData
+from jobs.utils import elastic, extract_model_data
+
+
+async def run_unfollow_user(
+    msg_data: str,
+    elastic: ElasticsearchClient = Depends(elastic),
+) -> None:
+    model: UnfollowUserBaseMsgbData = extract_model_data(
+        msg_data=msg_data,
+        model=UnfollowUserBaseMsgbData,
+    )
+    # process follow logic
+    es_user_follower: ESUserFollower | None = await elastic.find(
+        index=settings.ES_USER_FOLLOWERS_INDEX,
+        query=common_q.find_by_attr(
+            guid=model.psql_user_follower_guid,
+        ),
+        model=ESUserFollower,
+        one=True,
+    )
+    if not es_user_follower:
+        raise Exception
+
+    es_followed_user: ESUser | None = await elastic.find(
+        index=settings.ES_USERS_INDEX,
+        query=common_q.find_by_attr(
+            guid=model.psql_followed_user_guid,
+        ),
+        model=ESUser,
+        one=True,
+    )
+    es_follower_user: ESUser | None = await elastic.find(
+        index=settings.ES_USERS_INDEX,
+        query=common_q.find_by_attr(
+            guid=model.user_guid,
+        ),
+        model=ESUser,
+        one=True,
+    )
+    if not es_followed_user or not es_follower_user:
+        raise Exception
+
+    await elastic.update(
+        index=settings.ES_USERS_INDEX,
+        doc_id=es_followed_user.id,
+        followers_count=es_followed_user.followers_count - 1,
+    )
+    await elastic.update(
+        index=settings.ES_USERS_INDEX,
+        doc_id=es_follower_user.id,
+        followers_count=es_follower_user.followers_count - 1,
+    )
+    await elastic.delete(
+        index=settings.ES_USER_FOLLOWERS_INDEX,
+        doc_id=es_user_follower.id,
+    )

@@ -8,20 +8,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.corefuncs import auth as authfuncs
+from app.core.decorators import manage_transaction
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.psql.user import User
-from app.database.session import psql_session_manager
+from app.database.session import esclient, psqlclient
 from app.datamodels.schemas.auth import FCMToken, FirebaseUser, Token
 from app.datamodels.schemas.request import UserCreateBase
 from app.datamodels.utils import from_stripe_amount_cents
 from app.depends.depends import (
     get_current_user,
-    get_es_query_service,
     get_firebase_user,
 )
-from pubsub_workers.payments.src.qrcode.generator import create_partyup_ticket
-from pubsub_workers.payments.src.schema.qr_data import (
+from jobs.payments.src.qrcode.generator import create_partyup_ticket
+from jobs.payments.src.schema.qr_data import (
     BaseQRCodeData,
     BaseQRCodePaymentData,
     QRData,
@@ -29,15 +29,15 @@ from pubsub_workers.payments.src.schema.qr_data import (
 
 router = APIRouter(prefix="/auth")
 
-
 @router.post(
     path="/signup/email",
     status_code=status.HTTP_201_CREATED,
     description="Sign up a new user using email and password.",
 )
+@manage_transaction
 async def sign_up_by_email(
     request: Annotated[Request, Any],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user_form: Annotated[UserCreateBase, Body(default=...)],
 ) -> None:
     """
@@ -60,8 +60,9 @@ async def sign_up_by_email(
     status_code=status.HTTP_200_OK,
     description="Login with `uername` and `password`.",
 )
+@manage_transaction
 async def login_by_email_and_password(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     email: Annotated[StrictStr, Body(default=...)],
     password: Annotated[StrictStr, Body(default=...)],
 ) -> Token:
@@ -107,9 +108,10 @@ async def login_by_email_and_password(
     response_model=Token,
     description="Sign in or sign up a user using Google authentication.",
 )
+@manage_transaction
 async def sign_up_by_google(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     firebase_user: Annotated[FirebaseUser, Depends(dependency=get_firebase_user)],
     fcm_token: Annotated[FCMToken, Body(default=...)],
 ) -> Token:
@@ -139,8 +141,9 @@ async def sign_up_by_google(
     response_model=Token,
     description="Authenticate a user using email and password.",
 )
+@manage_transaction
 async def sign_in_by_email(
-    _: Annotated[AsyncSession, Depends(dependency=psql_session_manager)],
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_current_user)],
     fcm_token: Annotated[FCMToken, Body(default=...)],
 ) -> Token:
@@ -165,9 +168,10 @@ async def sign_in_by_email(
     status_code=status.HTTP_200_OK,
     description="Verify in app user email.",
 )
+@manage_transaction
 async def verify_eamil(
     firebase_uid: Annotated[str, Path(default=...)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
 ) -> None:
     """
     Verify in app user email as redirect URL after Firebase email authentication.
@@ -190,9 +194,10 @@ async def verify_eamil(
     status_code=status.HTTP_204_NO_CONTENT,
     description="Resend a verification email to an existing user.",
 )
+@manage_transaction
 async def resend_email_verification(
     request: Annotated[Request, Any],
-    _: Annotated[AsyncSession, Depends(dependency=psql_session_manager)],
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_current_user)],
 ) -> None:
     """
@@ -216,8 +221,9 @@ async def resend_email_verification(
     status_code=status.HTTP_204_NO_CONTENT,
     description="Logout the currently authenticated user.",
 )
+@manage_transaction
 async def logout_user(
-    _: Annotated[AsyncSession, Depends(dependency=psql_session_manager)],
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_current_user)],
 ) -> None:
     """
@@ -239,8 +245,9 @@ async def logout_user(
     status_code=status.HTTP_204_NO_CONTENT,
     description="Refresh the Firebase Cloud Messaging (FCM) token for push notifications.",
 )
+@manage_transaction
 async def refresh_fcm_token(
-    _: Annotated[AsyncSession, Depends(dependency=psql_session_manager)],
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_current_user)],
     fcm_token: Annotated[FCMToken, Body(default=...)],
 ) -> None:
@@ -265,8 +272,9 @@ async def refresh_fcm_token(
     status_code=status.HTTP_204_NO_CONTENT,
     description="Reset the password of an authenticated user.",
 )
+@manage_transaction
 async def reset_user_password(
-    _: Annotated[AsyncSession, Depends(dependency=psql_session_manager)],
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
     request: Annotated[Request, Any],
     user: Annotated[User, Depends(dependency=get_current_user)],
 ) -> None:

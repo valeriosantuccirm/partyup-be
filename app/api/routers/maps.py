@@ -5,9 +5,9 @@ from pydantic import StrictStr
 from starlette import status
 
 from app.core.corefuncs import maps
+from app.core.decorators import manage_transaction
 
 router = APIRouter(prefix="/maps")
-
 
 @router.get(
     path="/location/search",
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/maps")
     response_model=list[maps.MapsLocation],
     description="Search for locations based on user input.",
 )
+@manage_transaction
 async def search_location(
     user_input: Annotated[StrictStr, Query(default=...)],
 ) -> list[maps.MapsLocation]:

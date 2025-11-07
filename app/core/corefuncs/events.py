@@ -17,7 +17,7 @@ from app.constants import (
 from app.core import common
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import events_q
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_event import ESEvent
 from app.database.models.elasticsearch.es_media import ESMediaBase
 from app.database.models.enums.event import (
@@ -29,14 +29,19 @@ from app.database.models.enums.media import MediaType
 from app.database.models.psql.event import Event
 from app.database.models.psql.event_attendee import EventAttendee
 from app.database.models.psql.media import Media
+from app.database.models.psql.qr_ticket import QRTicket
 from app.database.models.psql.user import User
 from app.database.models.psql.user_follower import UserFollower
 from app.datamodels.schemas.response import PaginatedEvents
-from celery_app.tasks.events_tasks import (
-    celery_join_public_event,
-    celery_revoke_join_event,
+from app.pubsub.public_events.enums import PublicEventsPubSubEvent
+from app.pubsub.public_events.schemas import (
+    PublicEventJoinPubSubBaseData,
+    PublicEventJoinPubSubMsg,
+    PublicEventRevokePubSubMsg,
+    PublicEventRevokePubSubMsgBaseData,
 )
-from pubsub_workers.payments.src.schema.qr_data import QRData
+from app.pubsub.publisher import Publisher
+from jobs.payments.src.schema.qr_data import QRData
 
 
 async def get_leaderboard_events(
@@ -110,7 +115,7 @@ async def search_events(
 
 async def upload_user_event_media(
     esclient: ElasticsearchClient,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     media_content: UploadFile,
     event_guid: UUID,
@@ -125,7 +130,7 @@ async def upload_user_event_media(
     ):
         raise APIException(
             api_context=PUB_EVENT_API_CONTEXT,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Event with guid '{event_guid}' not found or not ready to host media content",
         )
     ext: str = await common.get_file_extension(
@@ -155,7 +160,7 @@ async def upload_user_event_media(
 
 
 async def join_public_event(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     event_guid: UUID,
 ) -> None:
@@ -210,23 +215,27 @@ async def join_public_event(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with guid '{psql_event.creator_guid}' not found",
         )
-    celery_join_public_event.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
-        args=(
-            event_attendee.model_dump(),
-            psql_event.total_attendees_count,
-            psql_event.followers_attendees_count,
-            event_guid,
-            user.username,
-            psql_event.cover_image_url,
-            creator.fcm_token,
-        ),
-        queue="partyup_events_queue",
-        priority=1,
+    publisher: Publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_EVENTS_TOPIC_ID,
+    )
+    await publisher.publish(
+        data=PublicEventJoinPubSubMsg(
+            event=PublicEventsPubSubEvent.event_join,
+            data=PublicEventJoinPubSubBaseData(
+                event_attendee=event_attendee,
+                psql_event_total_attendees_count=psql_event.total_attendees_count,
+                psql_event_followers_attendees_count=psql_event.followers_attendees_count,
+                event_guid=event_guid,
+                user_username=user.username,
+                psql_event_cover_image_url=psql_event.cover_image_url,
+                creator_fcm_token=creator.fcm_token,
+            ),
+        )
     )
 
 
 async def revoke_join_event(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     event_guid: UUID,
 ) -> None:
@@ -280,34 +289,69 @@ async def revoke_join_event(
     await db_session.delete(
         instance=psql_event_attendee,
     )
-    celery_revoke_join_event.apply_async(  # pyright: ignore[reportFunctionMemberAccess]
-        args=(
-            user.guid,
-            psql_event.followers_attendees_count,
-            psql_event.total_attendees_count,
-            psql_event_attendee.guid,
-            event_guid,
-            psql_event.cover_image_url,
-            user.username,
-            creator.fcm_token,
-        ),
-        queue="partyup_events_queue",
-        priority=1,
+    publisher: Publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_EVENTS_TOPIC_ID,
+    )
+    await publisher.publish(
+        data=PublicEventRevokePubSubMsg(
+            event=PublicEventsPubSubEvent.event_revoke,
+            data=PublicEventRevokePubSubMsgBaseData(
+                user_guid=user.guid,
+                psql_event_followers_attendees_count=psql_event.followers_attendees_count,
+                psql_event_total_attendees_count=psql_event.total_attendees_count,
+                psql_event_attendee_guid=psql_event_attendee.guid,
+                event_guid=event_guid,
+                psql_event_cover_image_url=psql_event.cover_image_url,
+                user_username=user.username,
+                creator_fcm_token=creator.fcm_token,
+            ),
+        )
     )
 
 
 async def aknowledge_data_by_scanned_qr_code(
-    db_session: PSQLSessionManager,
-    user: User,
+    db_session: PSQLClient,
     token: str,
-):
+) -> dict[str, bool]:
     f = Fernet(settings.FERNET_KEY)
 
     plaintext_bytes: bytes = f.decrypt(token.encode("utf-8"))
     qrdata = QRData(**json.loads(plaintext_bytes.decode("utf-8")))
 
-    user_event = await db_session.find_one_or_none(
-        model=Event, criteria=(Column("creator_guid") == qrdata.creator.guid,)
+    qr_ticket: QRTicket | None = await db_session.find_one_or_none(
+        model=QRTicket,
+        criteria=(Column("attendee_guid") == qrdata.attendee.guid,),
     )
 
-    return qrdata
+    if not qr_ticket:
+        raise Exception
+
+    if qr_ticket.expired:
+        raise Exception
+
+    if qr_ticket.acknowledged:
+        return {"acknowledged": qr_ticket.acknowledged}
+
+    event_attendee: EventAttendee | None = await db_session.find_one_or_none(
+        model=EventAttendee,
+        criteria=(
+            Column("event_guid") == qrdata.event.guid,
+            Column("user_guid") == qrdata.attendee.guid,
+        ),
+    )
+
+    if not event_attendee:
+        raise Exception
+
+    event: Event | None = await db_session.find_one_or_none(
+        model=Event,
+        criteria=(Column("creator_guid") == qrdata.creator.guid,),
+    )
+
+    if not event:
+        raise Exception
+
+    qr_ticket.acknowledged = True
+    event.total_attendees_count += 1
+
+    return {"acknowledged": qr_ticket.acknowledged}

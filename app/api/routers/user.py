@@ -5,15 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.corefuncs import user as userfuncs
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.core.decorators import manage_transaction
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.psql.user import User
-from app.database.session import psql_session_manager
+from app.database.session import psqlclient
 from app.datamodels.schemas.request import UserRequestBaseModel
 from app.datamodels.schemas.response import UserResponseModel
 from app.depends.depends import get_current_user
 
 router = APIRouter(prefix="/users/me/profile")
-
 
 @router.get(
     path="",
@@ -21,6 +21,7 @@ router = APIRouter(prefix="/users/me/profile")
     status_code=status.HTTP_200_OK,
     response_model=UserResponseModel,
 )
+@manage_transaction
 async def get_user_details(
     user: Annotated[User, Depends(dependency=get_current_user)],
 ) -> User:
@@ -42,8 +43,9 @@ async def get_user_details(
     status_code=status.HTTP_200_OK,
     response_model=UserResponseModel,
 )
+@manage_transaction
 async def complete_user_profile(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_current_user)],
     user_form: Annotated[UserRequestBaseModel, Body(default=...)],
 ) -> User:
@@ -70,8 +72,9 @@ async def complete_user_profile(
     description="Deactivate the currently logged-in user. The account is not deleted.",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@manage_transaction
 async def deactivate_account(
-    _: Annotated[AsyncSession, Depends(dependency=psql_session_manager)],
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_current_user)],
 ) -> None:
     """

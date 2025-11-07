@@ -5,25 +5,26 @@ from fastapi import APIRouter, Depends, Path, Query
 from starlette import status
 
 from app.core.corefuncs import user_hivers
+from app.core.decorators import manage_transaction
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_hiver_request import ESHiverRequest
 from app.database.models.enums.hiver import HiverRequestStatus
 from app.database.models.psql.user import User
-from app.database.session import psql_session_manager
+from app.database.session import esclient, psqlclient
 from app.datamodels.schemas.response import PaginatedListedUser
-from app.depends.depends import admit_user, get_es_query_service
+from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/users/me/hivers")
-
 
 @router.put(
     path="/requests/{hiver_request_guid}/respond",
     status_code=status.HTTP_204_NO_CONTENT,
     description="Respond to a friend request (accept or reject).",
 )
+@manage_transaction
 async def respond_to_hiver_request(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     hiver_request_guid: Annotated[UUID, Path(default=...)],
     accept: Annotated[bool, Query(default=...)],
@@ -54,8 +55,9 @@ async def respond_to_hiver_request(
     status_code=status.HTTP_200_OK,
     description="Retrieve sent or received friend requests.",
 )
+@manage_transaction
 async def get_user_hivers_requests(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     mode: Annotated[Literal["sent", "received"], Query(default=...)],
     status: Annotated[
@@ -93,8 +95,9 @@ async def get_user_hivers_requests(
     status_code=status.HTTP_200_OK,
     description="Retrieve a paginated list of linked friends.",
 )
+@manage_transaction
 async def get_user_linked_hivers(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     limit: Annotated[int, Query(default=...)] = 20,
     offset: Annotated[int, Query(default=...)] = 0,

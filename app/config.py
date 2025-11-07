@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     GOOGLE_PROJECT_ID: str
     # ELASTIC
     GOOGLE_ELASTIC_USERS_TOPIC_ID: str
+    GOOGLE_ELASTIC_HIVERS_TOPIC_ID: str
+    GOOGLE_ELASTIC_EVENTS_TOPIC_ID: str
     ## STRIPE
     STRIPE_SECRET_API_KEY: str
     APP_PERC_FEE: float

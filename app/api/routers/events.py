@@ -7,26 +7,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.corefuncs import events
+from app.core.decorators import manage_transaction
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.enums.event import EventStatus
 from app.database.models.psql.media import Media
 from app.database.models.psql.user import User
-from app.database.session import psql_session_manager
+from app.database.session import esclient, psqlclient
 from app.datamodels.schemas.response import PaginatedEvents
-from app.depends.depends import admit_user, get_attendee, get_es_query_service
+from app.depends.depends import admit_user, get_attendee
 
 router = APIRouter(prefix="/events")
-
 
 @router.get(
     path="/leaderboard",
     response_model=PaginatedEvents,
     status_code=status.HTTP_200_OK,
 )
+@manage_transaction
 async def get_leaderboard_events(
-    _: Annotated[AsyncSession, Depends(dependency=psql_session_manager)],
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     lat: Annotated[float, Query(default=...)],
     lon: Annotated[float, Query(default=...)],
@@ -66,9 +67,10 @@ async def get_leaderboard_events(
     response_model=PaginatedEvents,
     status_code=status.HTTP_200_OK,
 )
+@manage_transaction
 async def search_events(
-    _: Annotated[AsyncSession, Depends(dependency=psql_session_manager)],
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     lat: Annotated[float, Query(default=...)],
     lon: Annotated[float, Query(default=...)],
@@ -111,11 +113,12 @@ async def search_events(
     response_model=Media,
     status_code=status.HTTP_201_CREATED,
 )
+@manage_transaction
 async def upload_event_media(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     event_guid: Annotated[UUID, Path(default=...)],
     file: Annotated[UploadFile, File(default=...)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_attendee)],
 ) -> Media:
     """
@@ -135,9 +138,10 @@ async def upload_event_media(
     path="/events/{event_guid}/join",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@manage_transaction
 async def join_public_event(
     event_guid: Annotated[UUID, Path(default=...)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_attendee)],
 ) -> None:
     return await events.join_public_event(
@@ -151,9 +155,10 @@ async def join_public_event(
     path="/events/{event_guid}/revoke-join",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@manage_transaction
 async def revoke_join_public_event(
     event_guid: Annotated[UUID, Path(default=...)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_attendee)],
 ) -> None:
     return await events.revoke_join_event(
@@ -163,13 +168,17 @@ async def revoke_join_public_event(
     )
 
 
-@router.post(
+@router.put(
     path="/qrcode/aknowledge",
     status_code=status.HTTP_200_OK,
 )
+@manage_transaction
 async def read_event_generated_qrcode(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
-    user: Annotated[User, Depends(dependency=get_attendee)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    _: Annotated[User, Depends(dependency=get_attendee)],
     token: Annotated[str, Body(default=...)],
 ) -> Any:
-    return await events.aknowledge_data_by_scanned_qr_code()
+    return await events.aknowledge_data_by_scanned_qr_code(
+        db_session=db_session,
+        token=token,
+    )

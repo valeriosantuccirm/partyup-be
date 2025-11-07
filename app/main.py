@@ -22,7 +22,6 @@ from app.api.routers import (
     user_events,
     user_hivers,
 )
-from app.database.crud.elasticsearch.esclient import ElasticsearchMeta
 from app.database.redis import redis_client
 from app.database.session import engine
 
@@ -42,14 +41,13 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, Any]:
 
     # 🚀 3 Connect to Elasticsearch
     print("🔗 Connecting to Elasticsearch...")
-    await ElasticsearchMeta.init_client()
+
 
     yield  # App runs during this phase
 
     # 🚀 4 Cleanup Redis and Elasticsearch
     print("🔴 Disconnecting from Redis and Elasticsearch...")
     await redis_client.disconnect()
-    await ElasticsearchMeta.close_client()
 
 
 # instanciate app

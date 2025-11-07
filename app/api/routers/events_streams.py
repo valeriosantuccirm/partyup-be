@@ -8,16 +8,17 @@ from starlette import status
 
 from app.api.exceptions.http_exc import APIException
 from app.constants import USER_API_CONTEXT
+from app.core.decorators import manage_transaction
 from app.database.redis import RedisClient
 from app.depends.depends import get_redis_client
 
 wsrouter = APIRouter(prefix="/ws/stream/events")
 
-
 @wsrouter.websocket(
     path="/{event_guid}",
     name="live-event-media-stream",
 )
+@manage_transaction
 async def event_media_ws(
     websocket: Annotated[WebSocket, Any],
     event_guid: Annotated[UUID, Path(default=...)],

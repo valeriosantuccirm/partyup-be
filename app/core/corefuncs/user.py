@@ -10,13 +10,13 @@ from app.core.common import (
     are_user_info_complete,
     is_user_unique_params_already_assigned,
 )
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_user import ESUserBase
 from app.database.models.enums.user import UserInfoStatus
 from app.database.models.psql.user import User
-from app.datamodels.schemas.pubsub import PubSubUserMsg
 from app.datamodels.schemas.request import UserRequestBaseModel
-from app.publisher.publisher import es_user_publisher
+from app.pubsub.public_users.schemas import PubSubUserMsg
+from app.pubsub.publisher import Publisher
 
 
 async def deactivate_account(
@@ -37,7 +37,8 @@ async def deactivate_account(
     user.is_active = False
     user.username = None
     user.logout_timestamp = datetime.now().replace(microsecond=0)
-    await es_user_publisher.publish(
+    publisher = Publisher(topic_id="")
+    await publisher.publish(
         PubSubUserMsg(
             event="create",
             instance=ESUserBase(
@@ -48,7 +49,7 @@ async def deactivate_account(
 
 
 async def update_existing_user(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     user_form: UserRequestBaseModel,
 ) -> User:
@@ -91,7 +92,8 @@ async def update_existing_user(
         else UserInfoStatus.INCOMPLETE
     )
     user.updated_at = datetime.now()
-    await es_user_publisher.publish(
+    publisher = Publisher(topic_id="")
+    await publisher.publish(
         PubSubUserMsg(
             event="create",
             instance=ESUserBase(
@@ -103,7 +105,7 @@ async def update_existing_user(
 
 
 async def find_user(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     filters: tuple[tuple[str, Any], ...] = (),
 ) -> User:
     """

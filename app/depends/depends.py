@@ -10,21 +10,19 @@ from firebase_admin import auth
 from firebase_admin._user_mgt import (
     UserRecord,
 )
-from redis.asyncio.client import PubSub
 from sqlalchemy import Column
 from starlette import status
 
 from app.api.exceptions.http_exc import APIException
 from app.config import redis
-from app.constants import AUTH_API_CONTEXT, PUB_EVENT_API_CONTEXT, USER_API_CONTEXT
+from app.constants import AUTH_API_CONTEXT, PUB_EVENT_API_CONTEXT
 from app.core import common
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.enums.event import EventAttendeeStatus
 from app.database.models.psql.event_attendee import EventAttendee
 from app.database.models.psql.user import User
 from app.database.redis import RedisClient, redis_client
-from app.database.session import psql_session_manager
+from app.database.session import psqlclient
 from app.datamodels.schemas.auth import FirebaseUser
 
 security = HTTPBearer()
@@ -38,7 +36,7 @@ async def get_firebase_user(
 
     Args:
         :token (str): The authentication token obtained from the request headers.
-        :session (AsyncSession, optional): The SQLAlchemy database session. Defaults to Depends(dependency=psql_session_manager).
+        :session (AsyncSession, optional): The SQLAlchemy database session. Defaults to Depends(dependency=psqlclient).
 
     Returns:
         :User: The user corresponding to the provided authentication token.
@@ -86,7 +84,7 @@ async def get_firebase_user(
 
 
 async def get_current_user(
-    db_session: PSQLSessionManager = Depends(dependency=psql_session_manager),
+    db_session: PSQLClient = Depends(dependency=psqlclient),
     firebase_user: FirebaseUser = Depends(dependency=get_firebase_user),
 ) -> User | None:
     psql_user: User | None = await db_session.find_one_or_none(
@@ -117,7 +115,7 @@ async def admit_user(
 async def get_attendee(
     event_guid: UUID,
     user: User = Depends(dependency=get_current_user),
-    db_session: PSQLSessionManager = Depends(dependency=psql_session_manager),
+    db_session: PSQLClient = Depends(dependency=psqlclient),
 ) -> User:
     """Check if the user is an attendee of the event."""
     event_attendee: EventAttendee | None = await db_session.find_one_or_none(
@@ -136,32 +134,7 @@ async def get_attendee(
     return user
 
 
-async def pubsub_event(
-    event_guid: UUID,
-    user: User = Depends(dependency=get_current_user),
-) -> tuple[RedisClient, PubSub]:
-    redis_set_key: str = f"event_users:{event_guid}"
-    if not redis_client.redis:
-        await redis_client.connect()
-    if not redis_client.redis.sismember(
-        name=redis_set_key,
-        value=str(user.guid),
-    ):
-        raise APIException(
-            api_context=USER_API_CONTEXT,
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User is not allowed to access event media stream",
-        )
-    pubsub: PubSub = redis_client.redis.pubsub()
-    await pubsub.subscribe(f"event_media:{event_guid}")
-    return redis_client, pubsub
-
-
 async def get_redis_client() -> RedisClient:
     if not redis_client.redis:
         await redis_client.connect()
     return redis_client
-
-
-async def get_es_query_service() -> ElasticsearchClient:
-    return ElasticsearchClient()

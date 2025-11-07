@@ -8,7 +8,7 @@ from sqlalchemy import Column
 
 from app.api.exceptions.http_exc import APIException
 from app.config import settings
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.enums.payee_account import CountryCode
 from app.database.models.psql.payee_account import PayeeAccount
 from app.database.models.psql.payment_intent import PaymentIntent
@@ -24,7 +24,7 @@ stripe.api_key = settings.STRIPE_SECRET_API_KEY
 
 
 async def create_stripe_customer(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
 ) -> StripeCustomer:
     # Create a new customer
@@ -49,7 +49,7 @@ async def create_stripe_customer(
 
 
 async def attach_payment_method(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     payment_method_id: str,
 ) -> StripeCustomer:
@@ -77,7 +77,7 @@ async def attach_payment_method(
 
 
 async def schedule_payment_intent(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     event_guid: UUID,
     payload: ScheduledPaymentRequest,
@@ -106,7 +106,7 @@ async def schedule_payment_intent(
 
 
 async def make_scheduled_payment(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     scheduled_payment_guid: UUID,
     customer_guid: UUID,
 ) -> ScheduledPayment:
@@ -186,7 +186,7 @@ async def create_stripe_payee_account(
 
 
 async def complete_payee_account_onboarding(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     spaccount_id: str,
     token: str,
 ) -> PayeeAccount:

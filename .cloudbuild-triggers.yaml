@@ -1,0 +1,23 @@
+# Trigger for Cloud Function producer
+- name: producer-daily-payments-deploy
+  description: Deploy function producer
+  github:
+    name: partyup-be
+    owner: valeriosantuccirm
+    push:
+      branch: ^main$
+  includedFiles:
+    - "producer/**"
+  filename: "producer/cloud_funcs/daily_payments/cloudbuild.yaml"
+
+# Trigger for Cloud Function consumer
+- name: consumer-workers-deploy
+  description: Deploy consumer workers
+  github:
+    name: partyup-be
+    owner: valeriosantuccirm
+    push:
+      branch: ^main$
+  includedFiles:
+    - "consumers/**"
+  filename: "consumers/workers/cloudbuild.yaml"

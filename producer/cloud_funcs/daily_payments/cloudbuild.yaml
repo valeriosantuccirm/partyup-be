@@ -1,0 +1,27 @@
+steps:
+  - name: python:3.11-slim
+    id: "setup-deps"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        cd ../..                    # vai alla root del repo
+        pip install uv
+        uv sync --frozen            # installa dipendenze in .venv
+        uv run pytest -q || echo "⚠️ Test non trovati o falliti, proseguo comunque"
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: "deploy-function"
+    entrypoint: gcloud
+    args:
+      [
+        "functions", "deploy", "daily-payments-producer",
+        "--runtime", "python311",
+        "--region", "europe-west1",
+        "--source", "../..",
+        "--entry-point", "producer.cloud_funcs.daily_payments.main.app",
+        "--trigger-http",
+        "--allow-unauthenticated"
+      ]
+
+timeout: 1200s

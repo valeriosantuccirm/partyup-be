@@ -9,7 +9,7 @@ from app.config import settings
 from app.constants import DB_API_CONTEXT, DB_PSQL_DB_CONTEXT, USER_HIVER_API_CONTEXT
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import users_q
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_hiver_request import ESHiverRequest
 from app.database.models.elasticsearch.es_user_hiver import (
     ESUserHiverRelations,
@@ -19,7 +19,9 @@ from app.database.models.psql.hiver_request import HiverRequest
 from app.database.models.psql.user import User
 from app.database.models.psql.user_hiver import UserHiver
 from app.datamodels.schemas.response import ESListedUser, PaginatedListedUser
-from celery_app.tasks.user_hivers_tasks import celery_respond_hiver_request
+from app.pubsub.hivers.enums import HiversPubSubEvent
+from app.pubsub.hivers.schemas import HiverReqRespPubSubBaseData, HiverReqRespPubSubMsg
+from app.pubsub.publisher import Publisher
 
 
 async def get_user_hiver_requests(
@@ -45,7 +47,7 @@ async def get_user_hiver_requests(
 
 
 async def respond_hiver_request(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     hiver_request_guid: UUID,
     accept: bool,
@@ -67,7 +69,7 @@ async def respond_hiver_request(
     ):
         raise APIException(
             api_context=USER_HIVER_API_CONTEXT,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Hiver request already processed. Status: {psql_hiver_request.status}",
         )
     psql_sender: User | None = await db_session.find_one_or_none(
@@ -86,6 +88,7 @@ async def respond_hiver_request(
         HiverRequestStatus.ACCEPTED if accept else HiverRequestStatus.DECLINED
     )
     # increase users hivers count if hiver request accepted
+    user_hiver: UserHiver | None = None
     if accept:
         user.hivers_count += 1
         psql_sender.hivers_count += 1
@@ -96,18 +99,22 @@ async def respond_hiver_request(
         await db_session.add(
             instance=user_hiver,
         )
-    celery_respond_hiver_request.apply_async(
-        args=(
-            user,
-            hiver_request_guid,
-            accept,
-            user_hiver,
-            psql_sender.guid,
-            psql_hiver_request.status.value,
-            psql_sender.fcm_token,
-        ),
-        queue="partyup_user_hivers_queue",
-        priority=1,
+    publisher: Publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_USERS_TOPIC_ID,
+    )
+    await publisher.publish(
+        data=HiverReqRespPubSubMsg(
+            event=HiversPubSubEvent.hiver_request_respond,
+            data=HiverReqRespPubSubBaseData(
+                user=user,
+                hiver_request_guid=hiver_request_guid,
+                accept=accept,
+                user_hiver=user_hiver,
+                psql_sender_guid=psql_sender.guid,
+                psql_hiver_request_status=psql_hiver_request.status,
+                psql_sender_fcm_token=psql_sender.fcm_token,
+            ),
+        )
     )
 
 

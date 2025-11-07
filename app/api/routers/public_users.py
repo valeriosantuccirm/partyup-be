@@ -6,17 +6,17 @@ from pydantic import StrictStr
 from starlette import status
 
 from app.core.corefuncs import public_users
+from app.core.decorators import manage_transaction
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_user import ESUser
 from app.database.models.psql.hiver_request import HiverRequest
 from app.database.models.psql.user import User
-from app.database.session import psql_session_manager
+from app.database.session import esclient, psqlclient
 from app.datamodels.schemas.response import PaginatedListedUser
-from app.depends.depends import admit_user, get_es_query_service
+from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/users/public")
-
 
 @router.get(
     path="/search",
@@ -24,8 +24,9 @@ router = APIRouter(prefix="/users/public")
     status_code=status.HTTP_200_OK,
     description="Search for users based on input, optional location, and radius.",
 )
+@manage_transaction
 async def search_accounts(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     user_input: Annotated[StrictStr, Query(default=...)],
     lat: Annotated[float | None, Query(default=...)] = None,
@@ -67,9 +68,10 @@ async def search_accounts(
     status_code=status.HTTP_200_OK,
     description="Retrieve a user's public profile board based on visibility settings.",
 )
+@manage_transaction
 async def get_user_board_by_visibility(
     _: Annotated[User, Depends(dependency=admit_user)],
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     id: Annotated[UUID, Path(default=...)],
 ) -> ESUser:
     """
@@ -92,8 +94,9 @@ async def get_user_board_by_visibility(
     status_code=status.HTTP_204_NO_CONTENT,
     description="Follow another user.",
 )
+@manage_transaction
 async def follow_user(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     user_guid: Annotated[UUID, Path(default=...)],
 ) -> None:
@@ -120,8 +123,9 @@ async def follow_user(
     status_code=status.HTTP_204_NO_CONTENT,
     description="Unfollow a user.",
 )
+@manage_transaction
 async def unfollow_user(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     user_guid: Annotated[UUID, Path(default=...)],
 ) -> None:
@@ -149,9 +153,10 @@ async def unfollow_user(
     status_code=status.HTTP_201_CREATED,
     description="Send a hiver request to another user.",
 )
+@manage_transaction
 async def send_hiver_request_to_user(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     user_guid: Annotated[UUID, Path(default=...)],
 ) -> HiverRequest:
@@ -179,9 +184,10 @@ async def send_hiver_request_to_user(
     status_code=status.HTTP_200_OK,
     description="Remove a user from your Hiver list.",
 )
+@manage_transaction
 async def remove_hiver(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     user_guid: Annotated[UUID, Path(default=...)],
 ) -> None:

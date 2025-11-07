@@ -9,19 +9,19 @@ from starlette import status
 
 from app.core.corefuncs import user_events
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_event import ESEvent, ESEventBase
 from app.database.models.enums.event import EventStatus
 from app.database.models.psql.event import Event
 from app.database.models.psql.user import User
-from app.database.session import psql_session_manager
+from app.database.session import esclient, psqlclient
 from app.datamodels.schemas.request import (
     EventCreateExtendedRequest,
     EventCreateRequest,
     UserEventUpdateExtendedRequest,
     UserEventUpdateRequest,
 )
-from app.depends.depends import admit_user, get_es_query_service
+from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/users/me/events")
 
@@ -33,8 +33,8 @@ router = APIRouter(prefix="/users/me/events")
     description="Create a new event with optional cover image.",
 )
 async def create_event(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     event_request: Annotated[
         StrictStr,
@@ -77,8 +77,8 @@ async def create_event(
     description="Retrieve a list of events for the logged-in user.",
 )
 async def get_events(
-    _: Annotated[AsyncSession, Depends(dependency=psql_session_manager)],
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     status: Annotated[EventStatus | None, Query(default=...)] = None,
 ) -> list[ESEvent]:
@@ -105,8 +105,8 @@ async def get_events(
     description="Cancel an event created by the logged-in user.",
 )
 async def cancel_event(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     event_guid: Annotated[UUID, Path(default=...)],
 ) -> None:
@@ -136,8 +136,8 @@ async def cancel_event(
     response_model=Event,
 )
 async def update_event(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     event_guid: Annotated[UUID, Path(default=...)],
     event_request: Annotated[
@@ -185,8 +185,8 @@ async def update_event(
     description="Send event invitations to selected hivers.",
 )
 async def send_event_invitations_to_hivers(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=get_es_query_service)],
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     event_guid: Annotated[UUID, Path(default=...)],
     hivers_guids: Annotated[list[UUID], Body(default=...)],
@@ -206,7 +206,7 @@ async def send_event_invitations_to_hivers(
     description="RSVP to an event by accepting or decline a join request.",
 )
 async def rsvp_to_event_join_request(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     event_guid: Annotated[UUID, Path(default=...)],
     accept: Annotated[bool, Query(default=...)],

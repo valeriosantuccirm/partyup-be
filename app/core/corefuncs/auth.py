@@ -13,26 +13,25 @@ from sqlalchemy import Column
 from starlette import status
 
 from app.api.exceptions.http_exc import APIException, DBException
-from app.config import ph, redis
+from app.config import ph, redis, settings
 from app.constants import AUTH_API_CONTEXT
 from app.core import common as coreutils
 from app.core.email import Email
 from app.core.fcm import send_push_notification
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.session_manager import PSQLSessionManager
-from app.database.models.elasticsearch.es_user import ESUserBase
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.enums.common import OAuthProvider
 from app.database.models.enums.user import UserInfoStatus
 from app.database.models.psql.user import User
 from app.datamodels.schemas.auth import FCMToken, FirebaseUser, Token
-from app.datamodels.schemas.pubsub import PubSubUserMsg
 from app.datamodels.schemas.request import UserCreateBase
-from app.publisher import es_user_publisher
+from app.pubsub.public_users.enums import PublicUsersPubSubEvent
+from app.pubsub.public_users.schemas import UserCreatePubSubMsg
+from app.pubsub.publisher import Publisher
 
 
 async def signup_user_by_email(
     request: Request,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user_form: UserCreateBase,
 ) -> None:
     if await coreutils.is_user_unique_params_already_assigned(
@@ -73,13 +72,14 @@ async def signup_user_by_email(
     await db_session.add(
         instance=user,
     )
-    await es_user_publisher.publish(
-        PubSubUserMsg(
-            event="create",
-            instance=ESUserBase(
-                **dict(user),
-            ),
-        ).model_dump()
+    publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_USERS_TOPIC_ID,
+    )
+    await publisher.publish(
+        UserCreatePubSubMsg(
+            event=PublicUsersPubSubEvent.user_create,
+            instance=user,
+        )
     )
 
 
@@ -103,8 +103,7 @@ async def resend_email_verification(
 
 
 async def signin_or_signup_user_by_google(
-    esclient: ElasticsearchClient,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     firebase_user: FirebaseUser,
     fcm_token: FCMToken,
 ) -> Token:
@@ -135,13 +134,14 @@ async def signin_or_signup_user_by_google(
         await db_session.add(
             instance=user,
         )
-        await es_user_publisher.publish(
-            PubSubUserMsg(
-                event="create",
-                instance=ESUserBase(
-                    **dict(user),
-                ),
-            ).model_dump()
+        publisher = Publisher(
+            topic_id=settings.GOOGLE_ELASTIC_USERS_TOPIC_ID,
+        )
+        await publisher.publish(
+            UserCreatePubSubMsg(
+                event=PublicUsersPubSubEvent.user_create,
+                instance=user,
+            )
         )
     return Token(access_token=firebase_user.access_token)
 
@@ -198,7 +198,7 @@ async def reset_user_password(
 
 
 async def verify_in_app_email(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     firebase_uid: str,
 ) -> None:
     user: User | None = await db_session.find_one_or_none(
@@ -213,7 +213,7 @@ async def verify_in_app_email(
 
 
 async def login_with_eamil_and_pswd(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     email: str,
     password: str,
 ) -> Token:

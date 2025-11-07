@@ -70,7 +70,7 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
             logger.error(traceback.format_exc())
             await _session.rollback()
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=e.args,
             ) from e
         except (IntegrityError, UniqueViolationError) as e:

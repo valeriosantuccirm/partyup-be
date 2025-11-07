@@ -5,26 +5,27 @@ from fastapi import APIRouter, Body, Depends, Path, Query, Request
 from starlette import status
 
 from app.core.corefuncs import payments
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.core.decorators import manage_transaction
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.enums.payee_account import CountryCode
 from app.database.models.psql.payee_account import PayeeAccount
 from app.database.models.psql.scheduled_payment import ScheduledPayment
 from app.database.models.psql.stripe_customer import StripeCustomer
 from app.database.models.psql.user import User
-from app.database.session import psql_session_manager
+from app.database.session import psqlclient
 from app.datamodels.schemas.request import ScheduledPaymentRequest
 from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/payments")
-
 
 @router.post(
     path="/customer",
     response_model=StripeCustomer,
     status_code=status.HTTP_201_CREATED,
 )
+@manage_transaction
 async def get_leaderboard_events(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
 ) -> StripeCustomer:
     """ """
@@ -39,8 +40,9 @@ async def get_leaderboard_events(
     response_model=StripeCustomer,
     status_code=status.HTTP_200_OK,
 )
+@manage_transaction
 async def attach_payment_method_to_user(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     payment_method_id: Annotated[str, Body(default=...)],
 ) -> StripeCustomer:
@@ -57,8 +59,9 @@ async def attach_payment_method_to_user(
     response_model=ScheduledPayment,
     status_code=status.HTTP_201_CREATED,
 )
+@manage_transaction
 async def schedule_payment_intent(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
     event_guid: Annotated[UUID, Path(default=...)],
     payload: Annotated[ScheduledPaymentRequest, Body(default=...)],
@@ -77,8 +80,9 @@ async def schedule_payment_intent(
     response_model=ScheduledPayment,
     status_code=status.HTTP_201_CREATED,
 )
+@manage_transaction
 async def make_payment(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     scheduled_payment_guid: Annotated[UUID, Path(default=...)],
     customer_guid: Annotated[UUID, Path(default=...)],
 ) -> ScheduledPayment:
@@ -94,6 +98,7 @@ async def make_payment(
     path="/payee-account/onboard",
     status_code=status.HTTP_201_CREATED,
 )
+@manage_transaction
 async def create_payee_account(
     _: Annotated[User, Depends(dependency=admit_user)],
     country_code: Annotated[CountryCode, Body(default=...)],
@@ -111,8 +116,9 @@ async def create_payee_account(
     response_model=PayeeAccount,
     status_code=status.HTTP_201_CREATED,
 )
+@manage_transaction
 async def confirm_payee_account_creation(
-    db_session: Annotated[PSQLSessionManager, Depends(dependency=psql_session_manager)],
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     spaccount_id: Annotated[str, Query(default=...)],
     token: Annotated[str, Query(default=...)],
 ) -> PayeeAccount:

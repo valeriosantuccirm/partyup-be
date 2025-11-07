@@ -15,14 +15,14 @@ from app.constants import (
 )
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import common_q
-from app.database.crud.psql.session_manager import PSQLSessionManager
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_event import ESEvent
 from app.database.models.psql.event import Event
 from app.database.models.psql.user import User
 
 
 async def is_user_unique_params_already_assigned(
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     domain_attribute_pairs: tuple[tuple[str, Any], ...],
 ) -> bool:
     """
@@ -99,7 +99,7 @@ async def upload_content_to_s3(
         )
     except Exception as e:
         raise AWSException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Error uploading media content: {e!s}",
         ) from e
 
@@ -114,14 +114,14 @@ async def delete_content_from_s3(
         )
     except Exception as e:
         raise AWSException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Error deliting media content: {e!s}",
         ) from e
 
 
 async def find_es_and_psql_user_event(
     esclient: ElasticsearchClient,
-    db_session: PSQLSessionManager,
+    db_session: PSQLClient,
     user: User,
     event_guid: UUID,
 ) -> tuple[Event, ESEvent]:
