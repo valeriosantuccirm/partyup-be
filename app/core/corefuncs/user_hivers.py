@@ -1,12 +1,11 @@
 from typing import Any, Literal
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import Column
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException, DBException
 from app.config import settings
-from app.constants import DB_API_CONTEXT, DB_PSQL_DB_CONTEXT, USER_HIVER_API_CONTEXT
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import users_q
 from app.database.crud.psql.psqlclient import PSQLClient
@@ -57,9 +56,7 @@ async def respond_hiver_request(
         criteria=(Column("guid") == hiver_request_guid,),
     )
     if not psql_hiver_request:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Could not find hiver request in PSQL DB with guid '{hiver_request_guid}'",
         )
@@ -67,8 +64,7 @@ async def respond_hiver_request(
         HiverRequestStatus.ACCEPTED,
         HiverRequestStatus.DECLINED,
     ):
-        raise APIException(
-            api_context=USER_HIVER_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Hiver request already processed. Status: {psql_hiver_request.status}",
         )
@@ -77,9 +73,7 @@ async def respond_hiver_request(
         criteria=(Column("guid") == psql_hiver_request.sender_guid,),
     )
     if not psql_sender:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Could not find user in PSQL DB with guid '{psql_hiver_request.sender_guid}'",
         )

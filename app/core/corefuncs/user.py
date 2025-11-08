@@ -1,11 +1,10 @@
 from datetime import datetime
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import ColumnElement
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException
-from app.constants import AUTH_API_CONTEXT
 from app.core.common import (
     are_user_info_complete,
     is_user_unique_params_already_assigned,
@@ -32,7 +31,7 @@ async def deactivate_account(
         :UUID: The GUID related to the deleted user row.
 
     Raises:
-        :APIException: Gracefully handled exceptions.
+        :HTTPException: Gracefully handled exceptions.
     """
     user.is_active = False
     user.username = None
@@ -65,11 +64,10 @@ async def update_existing_user(
         :User: The updated user object.
 
     Raises:
-        :APIException: Gracefully handled exceptions.
+        :HTTPException: Gracefully handled exceptions.
     """
     if not user.username and not user_form.username:
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User must have a unique username assigned",
         )
@@ -78,8 +76,7 @@ async def update_existing_user(
         domain_attribute_pairs=(("username", user_form.username),),
     )
     if is_username_allocated and user.username != user_form.username:
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Username {user_form.username} is not assignable",
         )
@@ -119,7 +116,7 @@ async def find_user(
         :User: The existing user object if found.
 
     Raises:
-        :APIException: Gracefully handled exceptions.
+        :HTTPException: Gracefully handled exceptions.
     """
     clauses: list[ColumnElement] = []
     for pair in filters:
@@ -129,8 +126,7 @@ async def find_user(
         criteria=clauses,
     )
     if not user:
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )

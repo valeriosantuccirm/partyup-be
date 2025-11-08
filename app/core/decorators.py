@@ -1,5 +1,4 @@
 import json
-import traceback
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, Literal
@@ -14,9 +13,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException, AWSException, DBException
 from app.config import redis
-from app.configlog import logger
+from app.configlog import log
 from app.database.models.psql.user import User
 from app.datamodels.schemas.response import UserResponseModel
 
@@ -24,6 +22,7 @@ CONN = "session"
 CONN_VARS: tuple[Literal["session"], Literal["_"]] = ("session", "_")
 
 
+@log
 def manage_transaction(func: Callable[..., Any]) -> Any:
     """
     Decorator for managing database transactions in a function.
@@ -65,12 +64,7 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
                     return rv
             else:
                 rv: Any = await func(*args, **kwargs)
-        except (APIException, DBException, AWSException) as e:
-            if _session:
-                await _session.rollback()
-            raise e
         except (ValueError, TypeError) as e:
-            logger.error(traceback.format_exc())
             if _session:
                 await _session.rollback()
             raise HTTPException(
@@ -78,7 +72,6 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
                 detail=e.args,
             ) from e
         except (IntegrityError, UniqueViolationError) as e:
-            logger.error(traceback.format_exc())
             if _session:
                 await _session.rollback()
             raise HTTPException(
@@ -86,7 +79,6 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
                 detail=e.args,
             ) from e
         except KeyError as e:
-            logger.error(traceback.format_exc())
             if _session:
                 await _session.rollback()
             raise HTTPException(
@@ -94,12 +86,10 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
                 detail=e.args,
             ) from e
         except HTTPException as e:
-            logger.error(traceback.format_exc())
             if _session:
                 await _session.rollback()
             raise e
         except Exception as e:
-            logger.error(traceback.format_exc())
             if _session:
                 await _session.rollback()
             raise HTTPException(
@@ -162,7 +152,6 @@ def cache_result(key: str, ttl: int) -> Any:
             except HTTPException as e:
                 raise e
             except Exception as e:
-                logger.error(traceback.format_exc())
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
                 ) from e

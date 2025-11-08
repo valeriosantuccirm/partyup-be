@@ -1,7 +1,7 @@
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
@@ -13,9 +13,7 @@ from firebase_admin._user_mgt import (
 from sqlalchemy import Column
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException
 from app.config import redis
-from app.constants import AUTH_API_CONTEXT, PUB_EVENT_API_CONTEXT
 from app.core import common
 from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.enums.event import EventAttendeeStatus
@@ -68,15 +66,13 @@ async def get_firebase_user(
             full_name=firebase_user.display_name,
         )
     except (auth.ExpiredIdTokenError, auth.InvalidIdTokenError) as e:
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid or expired token. Details: {e}",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
     except Exception as e:
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Could not validate credentials. Details: {e}",
             headers={"WWW-Authenticate": "Bearer"},
@@ -92,8 +88,7 @@ async def get_current_user(
         criteria=(Column("firebase_uid") == firebase_user.uid,),
     )
     if not psql_user:
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
@@ -104,8 +99,7 @@ async def admit_user(
     current_user: Annotated[User, Depends(dependency=get_current_user)],
 ) -> User:
     if not await common.are_user_info_complete(user=current_user):
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User must provide mandatory info before proceeding",
         )
@@ -126,8 +120,7 @@ async def get_attendee(
         ),
     )
     if event_attendee and event_attendee.status != EventAttendeeStatus.CONFIRMED:
-        raise APIException(
-            api_context=PUB_EVENT_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User is not allowed to post media for this event because he's not a confirmed attendee",
         )

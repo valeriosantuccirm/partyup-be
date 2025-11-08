@@ -3,17 +3,11 @@ from typing import Any
 from uuid import UUID
 
 from cryptography.fernet import Fernet
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from sqlalchemy import Column
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException, DBException
 from app.config import settings
-from app.constants import (
-    DB_API_CONTEXT,
-    DB_PSQL_DB_CONTEXT,
-    PUB_EVENT_API_CONTEXT,
-)
 from app.core import common
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import events_q
@@ -128,8 +122,7 @@ async def upload_user_event_media(
         EventStatus.ONGOING,
         EventStatus.OUTDATED,
     ):
-        raise APIException(
-            api_context=PUB_EVENT_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Event with guid '{event_guid}' not found or not ready to host media content",
         )
@@ -169,15 +162,12 @@ async def join_public_event(
         criteria=(Column("guid") == event_guid,),
     )
     if not psql_event or psql_event.status != EventStatus.UPCOMING:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Event with guid '{event_guid}' not found in PSQL or status is not 'UPCOMING'",
         )
     if psql_event.total_attendees_count == psql_event.max_attendees:
-        raise APIException(
-            api_context=PUB_EVENT_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Event with guid '{event_guid}' has reached the maximum number of attendees",
         )
@@ -210,8 +200,7 @@ async def join_public_event(
         criteria=(Column("guid") == psql_event.creator_guid,),
     )
     if not creator:
-        raise APIException(
-            api_context=PUB_EVENT_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with guid '{psql_event.creator_guid}' not found",
         )
@@ -244,9 +233,7 @@ async def revoke_join_event(
         criteria=(Column("guid") == event_guid,),
     )
     if not psql_event or psql_event.status != EventStatus.UPCOMING:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Event with guid '{event_guid}' not found in PSQL or status is not 'UPCOMING'",
         )
@@ -258,9 +245,7 @@ async def revoke_join_event(
         ),
     )
     if not psql_event_attendee:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with guid '{user.guid}' not found in event with guid '{event_guid}' in PSQL",
         )
@@ -270,8 +255,7 @@ async def revoke_join_event(
         criteria=(Column("guid") == psql_event.creator_guid,),
     )
     if not creator:
-        raise APIException(
-            api_context=PUB_EVENT_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with guid '{psql_event.creator_guid}' not found",
         )
@@ -330,7 +314,9 @@ async def aknowledge_data_by_scanned_qr_code(
         raise Exception
 
     if qr_ticket.acknowledged:
-        return {"acknowledged": qr_ticket.acknowledged}
+        return {
+            "acknowledged": qr_ticket.acknowledged,
+        }
 
     event_attendee: EventAttendee | None = await db_session.find_one_or_none(
         model=EventAttendee,
@@ -354,4 +340,6 @@ async def aknowledge_data_by_scanned_qr_code(
     qr_ticket.acknowledged = True
     event.total_attendees_count += 1
 
-    return {"acknowledged": qr_ticket.acknowledged}
+    return {
+        "acknowledged": qr_ticket.acknowledged,
+    }

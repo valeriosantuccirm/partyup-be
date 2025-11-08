@@ -2,12 +2,17 @@ import asyncio
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Path,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from redis.asyncio.client import PubSub
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException
-from app.constants import USER_API_CONTEXT
 from app.core.decorators import manage_transaction
 from app.database.redis import RedisClient
 from app.depends.depends import get_redis_client
@@ -36,8 +41,7 @@ async def event_media_ws(
         name=redis_set_key,
         value="fd04f528-d228-4d45-9e5c-74c10b7c6402",
     ):
-        raise APIException(
-            api_context=USER_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User is not allowed to access event media stream",
         )

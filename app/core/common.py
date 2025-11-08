@@ -2,17 +2,11 @@ from typing import Any, Literal, overload
 from uuid import UUID, uuid4
 
 import httpx
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from sqlalchemy import Column, ColumnElement
 from starlette import status
 
-from app.api.exceptions.http_exc import AWSException, DBException
 from app.config import s3, settings
-from app.constants import (
-    DB_API_CONTEXT,
-    DB_ES_DB_CONTEXT,
-    DB_PSQL_DB_CONTEXT,
-)
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import common_q
 from app.database.crud.psql.psqlclient import PSQLClient
@@ -98,7 +92,7 @@ async def upload_content_to_s3(
             content_filename,
         )
     except Exception as e:
-        raise AWSException(
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Error uploading media content: {e!s}",
         ) from e
@@ -113,7 +107,7 @@ async def delete_content_from_s3(
             Key=media_filename,
         )
     except Exception as e:
-        raise AWSException(
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Error deliting media content: {e!s}",
         ) from e
@@ -130,9 +124,7 @@ async def find_es_and_psql_user_event(
         criteria=(Column("guid") == event_guid,),
     )
     if not psql_event:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Event with guid '{event_guid}' not found in PSQL DB",
         )
@@ -147,9 +139,7 @@ async def find_es_and_psql_user_event(
         one=True,
     )
     if not es_event:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Event with psql guid '{event_guid}' not found in ES DB",
         )

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from pydantic import (
     BaseModel,
     EmailStr,
@@ -15,8 +15,6 @@ from pydantic import (
 from starlette import status
 from starlette.datastructures import UploadFile as starletteUploadFile
 
-from app.api.exceptions.http_exc import APIException
-from app.constants import USER_API_CONTEXT
 from app.database.models.enums.scheduled_payment import Currency
 from app.datamodels.utils import validate_fileimage_extension
 
@@ -67,7 +65,7 @@ class UserRequestBaseModel(BaseModel):
             :value (str): The date of birth to validate.
 
         Raises:
-            APIException: Raised when the date of birth does not meet the required format.
+            HTTPException: Raised when the date of birth does not meet the required format.
 
         Returns:
             :str: The validated date of birth.
@@ -75,8 +73,7 @@ class UserRequestBaseModel(BaseModel):
         try:
             datetime.strptime(value, "%d/%m/%Y")
         except ValueError as e:
-            raise APIException(
-                api_context=USER_API_CONTEXT,
+            raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Date of birth must be in the format: DD/MM/YYYY and respect valid calendar dates",
             ) from e
@@ -126,8 +123,7 @@ class EventCreateRequest(BaseModel):
     @field_validator("min_donation")
     def validate_float(cls, value: StrictFloat) -> StrictFloat:
         if not round(number=float(value) * 100) == value * 100:
-            raise APIException(
-                api_context=USER_API_CONTEXT,
+            raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Value must have two decimal places only",
             )

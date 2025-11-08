@@ -12,9 +12,9 @@ T = TypeVar("T", bound=SQLModel)
 class PSQLClient:
     def __init__(
         self,
-        psqlclient: AsyncSession,
+        session: AsyncSession,
     ) -> None:
-        self.session: AsyncSession = psqlclient
+        self.session: AsyncSession = session
 
     async def __add(
         self,

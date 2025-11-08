@@ -4,7 +4,7 @@ from typing import Any
 
 import requests
 from argon2.exceptions import VerifyMismatchError
-from fastapi import Request
+from fastapi import HTTPException, Request
 from firebase_admin import auth
 from firebase_admin._user_mgt import (
     UserRecord,
@@ -12,9 +12,7 @@ from firebase_admin._user_mgt import (
 from sqlalchemy import Column
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException, DBException
 from app.config import ph, redis, settings
-from app.constants import AUTH_API_CONTEXT
 from app.core import common as coreutils
 from app.core.email import Email
 from app.core.fcm import send_push_notification
@@ -41,8 +39,7 @@ async def signup_user_by_email(
             ("email", user_form.email),
         ),
     ):
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email or username already in use",
         )
@@ -88,8 +85,7 @@ async def resend_email_verification(
     user: User,
 ) -> None:
     if user.email_verified:
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User email already verified",
         )
@@ -143,7 +139,9 @@ async def signin_or_signup_user_by_google(
                 instance=user,
             )
         )
-    return Token(access_token=firebase_user.access_token)
+    return Token(
+        access_token=firebase_user.access_token,
+    )
 
 
 async def signin_user_by_email(
@@ -152,8 +150,7 @@ async def signin_user_by_email(
 ) -> Token:
     # Check email verification status
     if not user.email_verified:
-        raise APIException(
-            api_context=AUTH_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email not verified. Cannot sign in",
         )
@@ -206,7 +203,10 @@ async def verify_in_app_email(
         criteria=(Column("firebase_uid") == firebase_uid,),
     )
     if not user:
-        raise DBException()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
 
     user.email_verified = True
     await db_session.update(user)
@@ -222,7 +222,11 @@ async def login_with_eamil_and_pswd(
         criteria=(Column("email") == email,),
     )
     if not user:
-        raise DBException()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
     try:
         ph.verify(user.hashed_pswd, password)
         API_KEY = os.environ[
@@ -247,6 +251,7 @@ async def login_with_eamil_and_pswd(
         )  # 10 mins
         return Token(access_token=id_token)
     except VerifyMismatchError as e:
-        raise APIException(
-            api_context="auth",
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missmatch in verification. process",
         ) from e

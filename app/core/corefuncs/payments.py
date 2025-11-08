@@ -2,11 +2,11 @@ from datetime import timedelta
 from uuid import UUID
 
 import stripe
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import Column
+from starlette import status
 
-from app.api.exceptions.http_exc import APIException
 from app.config import settings
 from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.enums.payee_account import CountryCode
@@ -33,7 +33,10 @@ async def create_stripe_customer(
         criteria=(Column("user_guid") == user.guid,),
     )
     if existing_customer:
-        raise APIException(api_context="user")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Customer already exists",
+        )
     customer: stripe.Customer = stripe.Customer.create(
         email=user.email,
         name=user.full_name,  # pyright: ignore[reportArgumentType] -> at this point in the flow `full_name` cannot be None
@@ -59,7 +62,10 @@ async def attach_payment_method(
         criteria=(Column("user_guid") == user.guid,),
     )
     if not customer:
-        raise APIException(api_context="user")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Customer not found",
+        )
     pm: stripe.PaymentMethod = stripe.PaymentMethod.attach(
         payment_method_id,
         customer=customer.cus_id,
@@ -88,7 +94,10 @@ async def schedule_payment_intent(
         criteria=(Column("user_guid") == user.guid,),
     )
     if not customer or not customer.payment_method_id:
-        raise APIException(api_context="user")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Customer not found",
+        )
     scheduled_payment: ScheduledPayment = ScheduledPayment(
         due_date=payload.event_date.date()
         - timedelta(days=2),  # payment scheduled 2 days before event date
@@ -116,21 +125,33 @@ async def make_scheduled_payment(
         criteria=(Column("guid") == scheduled_payment_guid,),
     )
     if not scheduled_payment:
-        raise APIException(api_context="user")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No scheduled payment found",
+        )
     if scheduled_payment.discharged:
-        raise APIException(api_context="user")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Payment already processed",
+        )
     customer: StripeCustomer | None = await db_session.find_one_or_none(
         model=StripeCustomer,
         criteria=(Column("guid") == customer_guid,),
     )
     if not customer or not customer.payment_method_id:
-        raise APIException(api_context="user")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Customer not found",
+        )
     payee: PayeeAccount | None = await db_session.find_one_or_none(
         model=PayeeAccount,
         criteria=(Column("guid") == scheduled_payment.stripe_payee_account_guid,),
     )
     if not payee or not customer.payment_method_id:
-        raise APIException(api_context="user")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Payee not found",
+        )
 
     intent: stripe.PaymentIntent = stripe.PaymentIntent.create(
         amount=scheduled_payment.amount_cents,
@@ -201,7 +222,7 @@ async def complete_payee_account_onboarding(
         model=User, criteria=(Column("email") == firebase_user.email,)
     )
     if not psql_user:
-        raise APIException("auth")
+        raise HTTPException("auth")
 
     stripe_payee: stripe.Account = stripe.Account.retrieve(id=spaccount_id)  # pyright: ignore[reportUnknownMemberType]
     new_payee = PayeeAccount(

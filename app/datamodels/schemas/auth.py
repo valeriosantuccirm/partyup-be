@@ -1,10 +1,8 @@
 import re
 
+from fastapi import HTTPException
 from pydantic import BaseModel, EmailStr, Field, StrictBool, StrictStr, field_validator
 from starlette import status
-
-from app.api.exceptions.http_exc import APIException
-from app.constants import USER_API_CONTEXT
 
 
 class Token(BaseModel):
@@ -82,8 +80,7 @@ class PasswordResetRequest(BaseModel):
             pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$",
             string=value,
         ):
-            raise APIException(
-                api_context=USER_API_CONTEXT,
+            raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Password must be longer then 10 characters, contain at least one upper case letter and one special character",
             )

@@ -1,17 +1,11 @@
 from typing import Any
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import Column
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException, DBException
 from app.config import settings
-from app.constants import (
-    DB_API_CONTEXT,
-    DB_ES_DB_CONTEXT,
-    DB_PSQL_DB_CONTEXT,
-    USER_HIVER_API_CONTEXT,
-)
 from app.core import common, fcm
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import users_q
@@ -126,9 +120,7 @@ async def follow_user(
         ),
     )
     if user_follower:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Follower relation already exists",
         )
@@ -137,9 +129,7 @@ async def follow_user(
         criteria=(Column("guid") == user_guid,),
     )
     if not psql_followed_user:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Could not find user in PSQL DB with given criteria",
         )
@@ -183,9 +173,7 @@ async def unfollow_user(
         ),
     )
     if not psql_user_follower:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Could not find user follower in PSQL DB with given criteria",
         )
@@ -194,9 +182,7 @@ async def unfollow_user(
         criteria=(Column("guid") == user_guid,),
     )
     if not psql_followed_user:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Could not find user in PSQL DB with given criteria",
         )
@@ -231,9 +217,7 @@ async def send_hiver_request(
         criteria=(Column("guid") == user_guid,),
     )
     if not psql_user:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_PSQL_DB_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Could not find user in PSQL DB with guid '{user_guid}'",
         )
@@ -249,8 +233,7 @@ async def send_hiver_request(
         HiverRequestStatus.PENDING,
         HiverRequestStatus.ACCEPTED,
     ):
-        raise APIException(
-            api_context=USER_HIVER_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"A request to user with guid '{user_guid}' is alreadby been sent",
         )
@@ -259,8 +242,7 @@ async def send_hiver_request(
         criteria=(Column("guid") == user_guid,),
     )
     if not receiver:
-        raise APIException(
-            api_context=USER_HIVER_API_CONTEXT,
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Attempting to send a hiver request to a non existing user",
         )
@@ -308,13 +290,6 @@ async def get_user_profile(
         id=id,
         model=ESUser,
     )
-    if not es_user:
-        raise DBException(
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Could not find user in ES DB lined to doc id '{id}'",
-        )
     return es_user
 
 

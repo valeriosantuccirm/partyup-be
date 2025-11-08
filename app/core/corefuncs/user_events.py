@@ -2,13 +2,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from sqlalchemy import Column
 from starlette import status
 
-from app.api.exceptions.http_exc import APIException, DBException
 from app.config import settings
-from app.constants import DB_API_CONTEXT, DB_ES_DB_CONTEXT, USER_EVENT_API_CONTEXT
 from app.core import common
 from app.core.common import upload_content_to_s3
 from app.core.corefuncs import user_hivers
@@ -146,9 +144,8 @@ async def update_user_event(
         event_guid=event_guid,
     )
     if psql_event.status not in (EventStatus.UPCOMING,):
-        raise APIException(
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            api_context=USER_EVENT_API_CONTEXT,
             detail="Only an event with status 'UPCOMING' can be updated",
         )
     media_path: UploadFile | str | None = psql_event.cover_image_url
@@ -207,9 +204,8 @@ async def send_event_invitations_to_hivers(
         event_guid=event_guid,
     )
     if psql_event.status != EventStatus.UPCOMING:
-        raise APIException(
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            api_context=USER_EVENT_API_CONTEXT,
             detail="Only for an event with status 'UPCOMING' invitations can be sent",
         )
     linked_hivers_guids: PaginatedListedUser = await user_hivers.get_user_linked_hivers(
@@ -219,15 +215,13 @@ async def send_event_invitations_to_hivers(
         fields=["guid"],
     )
     if set(hivers_guids) - {user.guid for user in linked_hivers_guids.listed_users}:
-        raise APIException(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            api_context=USER_EVENT_API_CONTEXT,
             detail="Only linked hivers can be invited to an event",
         )
     if len(hivers_guids) > psql_event.hivers_reserved_slots:
-        raise APIException(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            api_context=USER_EVENT_API_CONTEXT,
             detail="Number of hivers exceeds the reserved slots for the event",
         )
     q: dict[str, Any] = events_q.find_event_attendees(
@@ -240,10 +234,8 @@ async def send_event_invitations_to_hivers(
         model=ESEventAttendee,
     )
     if len(es_event_attendees) != len(hivers_guids):
-        raise DBException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
             detail="Could not find all hivers in the event attendees list in ES",
         )
     es_event_attendee_guids: list[UUID] = [
@@ -288,16 +280,13 @@ async def rsvp_event_participation(
         criteria=(Column("guid") == event_guid,),
     )
     if not psql_event:
-        raise DBException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
             detail=f"Could not find event in PSQL DB with guid '{event_guid}'",
         )
     if psql_event.status != EventStatus.UPCOMING:
-        raise APIException(
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            api_context=USER_EVENT_API_CONTEXT,
             detail="Only for an event with status 'UPCOMING' RSVP can be sent",
         )
     psql_event_attendee: EventAttendee | None = await db_session.find_one_or_none(
@@ -308,19 +297,16 @@ async def rsvp_event_participation(
         ),
     )
     if not psql_event_attendee:
-        raise APIException(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            api_context=USER_EVENT_API_CONTEXT,
             detail="User not invited",
         )
     if psql_event_attendee.status in (
         EventAttendeeStatus.CONFIRMED,
         EventAttendeeStatus.DECLINED,
     ):
-        raise DBException(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            api_context=DB_API_CONTEXT,
-            db_context=DB_ES_DB_CONTEXT,
             detail="User already RSVP'd to the event",
         )
     psql_event_attendee.status = EventAttendeeStatus.rsvp(accept=accept)
