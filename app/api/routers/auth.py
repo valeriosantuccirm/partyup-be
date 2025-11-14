@@ -1,6 +1,4 @@
-from datetime import date, timedelta
 from typing import Annotated, Any
-from uuid import uuid4
 
 from fastapi import APIRouter, Body, Depends, Path, Request
 from pydantic import StrictStr
@@ -9,22 +7,14 @@ from starlette import status
 
 from app.core.corefuncs import auth as authfuncs
 from app.core.decorators import manage_transaction
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.psql.user import User
-from app.database.session import esclient, psqlclient
+from app.database.session import psqlclient
 from app.datamodels.schemas.auth import FCMToken, FirebaseUser, Token
 from app.datamodels.schemas.request import UserCreateBase
-from app.datamodels.utils import from_stripe_amount_cents
 from app.depends.depends import (
     get_current_user,
     get_firebase_user,
-)
-from jobs.payments.src.qrcode.generator import create_partyup_ticket
-from jobs.payments.src.schema.qr_data import (
-    BaseQRCodeData,
-    BaseQRCodePaymentData,
-    QRData,
 )
 
 router = APIRouter(prefix="/auth")
@@ -34,13 +24,14 @@ router = APIRouter(prefix="/auth")
     path="/signup/email",
     status_code=status.HTTP_201_CREATED,
     description="Sign up a new user using email and password.",
+    response_model=User,
 )
 @manage_transaction
 async def sign_up_by_email(
     request: Annotated[Request, Any],
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user_form: Annotated[UserCreateBase, Body(default=...)],
-) -> None:
+) -> User:
     """
     Register a new user using an email and password.
 
@@ -49,7 +40,7 @@ async def sign_up_by_email(
         db_session (AsyncSession): Database session dependency.
         user_form (UserCreateBase): User registration details.
     """
-    await authfuncs.signup_user_by_email(
+    return await authfuncs.signup_user_by_email(
         request=request,
         db_session=db_session,
         user_form=user_form,
@@ -60,46 +51,43 @@ async def sign_up_by_email(
     path="/login/email",
     status_code=status.HTTP_200_OK,
     description="Login with `uername` and `password`.",
+    response_model=Token,
 )
 @manage_transaction
 async def login_by_email_and_password(
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     email: Annotated[StrictStr, Body(default=...)],
     password: Annotated[StrictStr, Body(default=...)],
-) -> Token:
+) -> User:
     """
     TODO: find the way
     """
-    EMAIL = "valerio.santucci@gmail.com"
-    PSWD = "12romanistA!"
-    c = await create_partyup_ticket(
-        qrdata=QRData(
-            event=BaseQRCodeData(
-                name="Trasloco da Roma a Kufstein!",
-                guid=uuid4(),
-            ),
-            attendee=BaseQRCodeData(
-                name="Valerio Santucci",
-                guid=uuid4(),
-            ),
-            creator=BaseQRCodeData(
-                name="Erica Pitti",
-                guid=uuid4(),
-            ),
-            payment=BaseQRCodePaymentData(
-                status="success",
-                amount=float(from_stripe_amount_cents(15089)),
-                currency="EUR",
-                timestamp=date.today() + timedelta(5),
-            ),
-        )
-    )
+    # c = await create_partyup_ticket(
+    #     qrdata=QRData(
+    #         event=BaseQRCodeData(
+    #             name="Trasloco da Roma a Kufstein!",
+    #             guid=uuid4(),
+    #         ),
+    #         attendee=BaseQRCodeData(
+    #             name="Valerio Santucci",
+    #             guid=uuid4(),
+    #         ),
+    #         creator=BaseQRCodeData(
+    #             name="Erica Pitti",
+    #             guid=uuid4(),
+    #         ),
+    #         payment=BaseQRCodePaymentData(
+    #             status="success",
+    #             amount=float(from_stripe_amount_cents(15089)),
+    #             currency="EUR",
+    #             timestamp=date.today() + timedelta(5),
+    #         ),
+    #     )
+    # )
     return await authfuncs.login_with_eamil_and_pswd(
         db_session=db_session,
-        # email=email,
-        # password=password,
-        email=EMAIL,
-        password=PSWD,
+        email=email,
+        password=password,
     )
 
 
@@ -111,11 +99,10 @@ async def login_by_email_and_password(
 )
 @manage_transaction
 async def sign_up_by_google(
-    esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
+    request: Request,
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     firebase_user: Annotated[FirebaseUser, Depends(dependency=get_firebase_user)],
-    fcm_token: Annotated[FCMToken, Body(default=...)],
-) -> Token:
+) -> User:
     """
     Authenticate a user using Google Firebase authentication.
     If the user does not exist, they are registered automatically.
@@ -129,10 +116,9 @@ async def sign_up_by_google(
         Token: Authentication token for the session.
     """
     return await authfuncs.signin_or_signup_user_by_google(
-        esclient=esclient,
         db_session=db_session,
         firebase_user=firebase_user,
-        fcm_token=fcm_token,
+        fcm_token=request.headers["X-FCM-Token"],
     )
 
 
@@ -144,9 +130,9 @@ async def sign_up_by_google(
 )
 @manage_transaction
 async def sign_in_by_email(
+    request: Annotated[Request, Any],
     _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=get_current_user)],
-    fcm_token: Annotated[FCMToken, Body(default=...)],
 ) -> Token:
     """
     Authenticate a user using their email and password.
@@ -160,7 +146,7 @@ async def sign_in_by_email(
     """
     return await authfuncs.signin_user_by_email(
         user=user,
-        fcm_token=fcm_token,
+        x_fcm_token=request.headers["X-FCM-Token"],
     )
 
 
@@ -292,4 +278,30 @@ async def reset_user_password(
     return await authfuncs.reset_user_password(
         request=request,
         user=user,
+    )
+
+
+@router.post(
+    path="/access-token/refresh",
+    status_code=status.HTTP_204_NO_CONTENT,
+    description="Refresh the Firebase Cloud Messaging (FCM) token for push notifications.",
+)
+@manage_transaction
+async def refresh_access_token(
+    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
+    user: Annotated[User, Depends(dependency=get_current_user)],
+) -> None:
+    """
+    Update the user's Firebase Cloud Messaging (FCM) token.
+
+    Args:
+        user (User): The authenticated user.
+        fcm_token (FCMToken): The new FCM token for push notifications.
+
+    Returns:
+        None
+    """
+    return await authfuncs.refresh_user_fcm_token(
+        user=user,
+        fcm_token=fcm_token,
     )

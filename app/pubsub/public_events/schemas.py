@@ -1,7 +1,6 @@
 from typing import Any
 from uuid import UUID
 
-from pubsub.utils import _BasePubSubMsg  # pyright: ignore[reportPrivateUsage]
 from pydantic import (
     BaseModel,
     Field,
@@ -11,6 +10,7 @@ from pydantic import (
 )
 
 from app.database.models.psql.event_attendee import EventAttendee
+from app.pubsub.utils import _BasePubSubMsg  # pyright: ignore[reportPrivateUsage]
 
 
 class PublicEventJoinPubSubBaseData(BaseModel):

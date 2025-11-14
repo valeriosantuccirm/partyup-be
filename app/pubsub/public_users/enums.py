@@ -6,3 +6,5 @@ class PublicUsersPubSubEvent(Enum):
     user_follow = "USER-FOLLOW"
     user_unfollow = "USER-UNFOLLOW"
     hiver_request = "HIVER-REQUEST"
+    user_deactivate = "USER-DEACTIVATE"
+    user_update = "USER-UPDATE"

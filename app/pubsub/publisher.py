@@ -1,6 +1,4 @@
-import json
 from pathlib import Path
-from typing import Any
 
 from google.cloud.pubsub_v1 import (
     PublisherClient,
@@ -35,11 +33,10 @@ class Publisher:
 
     async def publish(
         self,
-        data: Any,
+        data: BaseModel,
     ) -> Future:
-        if isinstance(data, BaseModel):
-            data = data.model_dump()
-        data_str: str = json.dumps(data)
+        data_str: str = data.model_dump_json()
+        # data_str: str = json.dumps(data)
         future: Future = self.__publisher.publish(  # type: ignore
             self.topic_path,
             data=data_str.encode("utf-8"),

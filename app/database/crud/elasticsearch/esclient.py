@@ -58,6 +58,7 @@ class ElasticsearchClient:
             index=index,
             id=str(uuid4()),
             document=instance.model_dump(),
+            refresh=True,
         )
 
     async def __update(
@@ -75,6 +76,7 @@ class ElasticsearchClient:
             index=index,
             id=str(doc_id),
             body=update_body,
+            refresh=True,
         )
 
     async def __delete(
@@ -85,6 +87,7 @@ class ElasticsearchClient:
         await self.session.delete(
             index=index,
             id=str(object=doc_id),
+            refresh=True,
         )
 
     @overload

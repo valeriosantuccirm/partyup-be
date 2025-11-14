@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.config import redis
-from app.configlog import log
+from app.configlog import logger
+from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.psql.user import User
 from app.datamodels.schemas.response import UserResponseModel
 
@@ -22,7 +23,7 @@ CONN = "session"
 CONN_VARS: tuple[Literal["session"], Literal["_"]] = ("session", "_")
 
 
-@log
+# @log
 def manage_transaction(func: Callable[..., Any]) -> Any:
     """
     Decorator for managing database transactions in a function.
@@ -50,23 +51,25 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
 
     @wraps(wrapped=func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        _index: int | None = next(
+            (i for i, v in enumerate(kwargs.values()) if isinstance(v, PSQLClient)),
+            None,
+        )
         _session: AsyncSession | None = None
-        for conn_var in CONN_VARS:
-            if conn_var in kwargs:
-                _session = kwargs[conn_var]
-                break
+        if _index is not None:
+            _sqlclient: PSQLClient = kwargs[list(kwargs.keys())[_index]]
+            _session = _sqlclient.session
         try:
+            rv: Any = await func(*args, **kwargs)
             if _session:
-                async with _session.begin():
-                    rv: Any = await func(*args, **kwargs)
-                    await _session.flush()
-                    await _session.commit()
-                    return rv
-            else:
-                rv: Any = await func(*args, **kwargs)
+                await _session.flush()
+                await _session.commit()
+            logger.debug(f"Returning response: {rv}")
+            return rv
         except (ValueError, TypeError) as e:
             if _session:
                 await _session.rollback()
+                logger.error(e)
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=e.args,
@@ -74,6 +77,7 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
         except (IntegrityError, UniqueViolationError) as e:
             if _session:
                 await _session.rollback()
+                logger.error(e)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=e.args,
@@ -81,6 +85,7 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
         except KeyError as e:
             if _session:
                 await _session.rollback()
+                logger.error(e)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=e.args,
@@ -88,10 +93,12 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
         except HTTPException as e:
             if _session:
                 await _session.rollback()
+                logger.error(e)
             raise e
         except Exception as e:
             if _session:
                 await _session.rollback()
+                logger.error(e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=e.args,

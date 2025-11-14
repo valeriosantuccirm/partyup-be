@@ -1,7 +1,6 @@
 from typing import Any
 from uuid import UUID
 
-from pubsub.utils import _BasePubSubMsg  # pyright: ignore[reportPrivateUsage]
 from pydantic import (
     BaseModel,
     Field,
@@ -13,6 +12,7 @@ from pydantic import (
 from app.database.models.enums.hiver import HiverRequestStatus
 from app.database.models.psql.user import User
 from app.database.models.psql.user_hiver import UserHiver
+from app.pubsub.utils import _BasePubSubMsg  # pyright: ignore[reportPrivateUsage]
 
 
 class HiverReqRespPubSubBaseData(BaseModel):
@@ -24,7 +24,7 @@ class HiverReqRespPubSubBaseData(BaseModel):
     psql_hiver_request_status: HiverRequestStatus = Field(default=...)
     psql_sender_fcm_token: StrictStr | None = Field(default=...)
 
-    @field_serializer("event_attendee", "user_hiver")
+    @field_serializer("user", "user_hiver")
     def _dump(
         self,
         model: User | UserHiver | None,

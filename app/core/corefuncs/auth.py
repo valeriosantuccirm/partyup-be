@@ -15,7 +15,6 @@ from starlette import status
 from app.config import ph, redis, settings
 from app.core import common as coreutils
 from app.core.email import Email
-from app.core.fcm import send_push_notification
 from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.enums.common import OAuthProvider
 from app.database.models.enums.user import UserInfoStatus
@@ -31,24 +30,26 @@ async def signup_user_by_email(
     request: Request,
     db_session: PSQLClient,
     user_form: UserCreateBase,
-) -> None:
+) -> User:
     if await coreutils.is_user_unique_params_already_assigned(
         db_session=db_session,
-        domain_attribute_pairs=(
-            ("username", user_form.username),
-            ("email", user_form.email),
-        ),
+        domain_attribute_pairs=(("email", user_form.email),),
     ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Email or username already in use",
+            detail="Email already in use",
         )
-    firebase_user: UserRecord = auth.create_user(
-        email=user_form.email,
-        password=user_form.hashed_psw,
-    )
+    try:
+        firebase_user: UserRecord = auth.get_user_by_email(
+            email=user_form.email,
+        )
+    except auth.UserNotFoundError:
+        firebase_user: UserRecord = auth.create_user(
+            email=user_form.email,
+            email_verified=False,
+        )
     user: User = User(
-        email=user_form.email,
+        email=user_form.email.lower(),
         email_verified=firebase_user.email_verified,
         firebase_uid=firebase_user.uid,  # pyright: ignore[reportArgumentType] According to 'firebase_admin' doc this is never None
         is_active=True,
@@ -57,6 +58,13 @@ async def signup_user_by_email(
         profile_image=firebase_user.photo_url,
         username=user_form.username,
         hashed_pswd=ph.hash(user_form.hashed_psw),
+        fcm_token=request.headers.get("X-FCM-Token"),
+        bio=user_form.bio,
+        location_name=user_form.location,
+        location=user_form.lat_lon,
+        first_name=user_form.first_name,
+        last_name=user_form.last_name,
+        date_of_birth=user_form.date_of_birth,
     )
     if not user.email_verified:
         sender = Email(
@@ -75,9 +83,10 @@ async def signup_user_by_email(
     await publisher.publish(
         UserCreatePubSubMsg(
             event=PublicUsersPubSubEvent.user_create,
-            instance=user,
+            data=user,
         )
     )
+    return user
 
 
 async def resend_email_verification(
@@ -101,31 +110,30 @@ async def resend_email_verification(
 async def signin_or_signup_user_by_google(
     db_session: PSQLClient,
     firebase_user: FirebaseUser,
-    fcm_token: FCMToken,
-) -> Token:
+    fcm_token: str,
+) -> User:
     # Check if user exists
-    psql_user: User | None = await db_session.find_one_or_none(
+    user: User | None = await db_session.find_one_or_none(
         model=User,
         criteria=(Column("email") == firebase_user.email,),
     )
-    if psql_user and (
-        psql_user.auth_provider != OAuthProvider.GOOGLE or not psql_user.fcm_token
-    ):
-        psql_user.auth_provider = OAuthProvider.GOOGLE
-        psql_user.profile_image = firebase_user.profile_picture_url
-        psql_user.email_verified = True
-        psql_user.fcm_token = fcm_token.fcm_token
-    if not psql_user:
-        user: User = User(
-            email=firebase_user.email,
+    if user and (user.auth_provider != OAuthProvider.GOOGLE or not user.fcm_token):
+        user.auth_provider = OAuthProvider.GOOGLE
+        user.profile_image = firebase_user.profile_picture_url
+        user.email_verified = True
+        user.fcm_token = fcm_token
+    if not user:
+        user = User(
+            email=firebase_user.email.lower(),
             email_verified=True,  # Google has always verified email for users
             firebase_uid=firebase_user.uid,
             is_active=True,
             user_info_status=UserInfoStatus.INCOMPLETE,
             auth_provider=OAuthProvider.GOOGLE,
             profile_image=firebase_user.profile_picture_url,
-            fcm_token=fcm_token.fcm_token,
+            fcm_token=fcm_token,
             full_name=firebase_user.full_name,
+            hashed_pswd="TO REMOVE AS MANDATORY FIELD WHEN GOOGLE SIGNUP AND ASK TO ADD LATER MAYBE",  # TODO
         )
         await db_session.add(
             instance=user,
@@ -136,17 +144,15 @@ async def signin_or_signup_user_by_google(
         await publisher.publish(
             UserCreatePubSubMsg(
                 event=PublicUsersPubSubEvent.user_create,
-                instance=user,
+                data=user,
             )
         )
-    return Token(
-        access_token=firebase_user.access_token,
-    )
+    return user
 
 
 async def signin_user_by_email(
     user: User,
-    fcm_token: FCMToken,
+    x_fcm_token: str,
 ) -> Token:
     # Check email verification status
     if not user.email_verified:
@@ -155,7 +161,7 @@ async def signin_user_by_email(
             detail="Email not verified. Cannot sign in",
         )
     if not user.fcm_token:
-        user.fcm_token = fcm_token.fcm_token
+        user.fcm_token = x_fcm_token
     user.auth_provider = OAuthProvider.EMAIL
     cached_access_token: Any = redis.get(name=f"access_token:{user.firebase_uid}")
     return Token(access_token=str(cached_access_token))
@@ -173,12 +179,13 @@ async def refresh_user_fcm_token(
     user: User,
     fcm_token: FCMToken,
 ) -> None:
-    await send_push_notification(
-        fcm_token=fcm_token.fcm_token,
-        title="TEST",
-        body="TEST SU TEST",
-        image_url=user.profile_image,
-    )
+    user.fcm_token = fcm_token.fcm_token
+
+
+async def refresh_user_access_token(
+    user: User,
+    fcm_token: FCMToken,
+) -> None:
     user.fcm_token = fcm_token.fcm_token
 
 
@@ -216,7 +223,7 @@ async def login_with_eamil_and_pswd(
     db_session: PSQLClient,
     email: str,
     password: str,
-) -> Token:
+) -> User:
     user: User | None = await db_session.find_one_or_none(
         model=User,
         criteria=(Column("email") == email,),
@@ -242,14 +249,14 @@ async def login_with_eamil_and_pswd(
             json=payload,
         )
         res.raise_for_status()
-        id_token = res.json()["idToken"]
+        id_token: str = res.json()["idToken"]
         firebase_user: UserRecord = auth.get_user(uid=user.firebase_uid)
         redis.set(
             name=f"access_token:{firebase_user.uid}",
             value=id_token,
             ex=600,
         )  # 10 mins
-        return Token(access_token=id_token)
+        return user
     except VerifyMismatchError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

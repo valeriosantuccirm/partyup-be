@@ -1,7 +1,6 @@
 from typing import Any
 from uuid import UUID
 
-from pubsub.utils import _BasePubSubMsg  # pyright: ignore[reportPrivateUsage]
 from pydantic import (
     BaseModel,
     Field,
@@ -11,12 +10,13 @@ from pydantic import (
 
 from app.database.models.psql.hiver_request import HiverRequest
 from app.database.models.psql.user_follower import UserFollower
+from app.pubsub.utils import _BasePubSubMsg  # pyright: ignore[reportPrivateUsage]
 
 
 class UserCreatePubSubMsg(_BasePubSubMsg):
-    instance: BaseModel = Field(default=...)
+    data: BaseModel = Field(default=...)
 
-    @field_serializer("instance")
+    @field_serializer("data")
     def _dump(
         self,
         model: BaseModel,

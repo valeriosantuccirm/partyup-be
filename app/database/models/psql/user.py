@@ -60,7 +60,9 @@ class User(SQLModel, table=True):
     auth_provider: OAuthProvider = Field(default=OAuthProvider.EMAIL, nullable=False)
     bio: StrictStr | None = Field(default=None, nullable=True)
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
-    date_of_birth: StrictStr | None = Field(default=None, nullable=True)
+    date_of_birth: StrictStr | None = Field(
+        default=None, nullable=True
+    )  # TODO set as date
     email: EmailStr = Field(default=..., nullable=False, unique=True)
     email_verified: StrictBool = Field(default=False, nullable=False)
     event_participation: StrictInt = Field(default=0, nullable=False)

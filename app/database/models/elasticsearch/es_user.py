@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import (
     BaseModel,
+    EmailStr,
     Field,
     StrictFloat,
     StrictInt,
@@ -42,6 +43,7 @@ class ESUserBase(BaseModel):
     bio: StrictStr | None = Field(default=None)
     created_at: datetime = Field(default=...)
     date_of_birth: StrictStr | None = Field(default=None)
+    email: EmailStr = Field(default=...)
     firebase_uid: StrictStr = Field(default=...)
     first_name: StrictStr | None = Field(default=None)
     followers_count: StrictInt = Field(default=0)

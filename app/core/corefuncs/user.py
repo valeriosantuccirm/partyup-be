@@ -14,7 +14,8 @@ from app.database.models.elasticsearch.es_user import ESUserBase
 from app.database.models.enums.user import UserInfoStatus
 from app.database.models.psql.user import User
 from app.datamodels.schemas.request import UserRequestBaseModel
-from app.pubsub.public_users.schemas import PubSubUserMsg
+from app.pubsub.public_users.enums import PublicUsersPubSubEvent
+from app.pubsub.public_users.schemas import UserCreatePubSubMsg
 from app.pubsub.publisher import Publisher
 
 
@@ -38,12 +39,12 @@ async def deactivate_account(
     user.logout_timestamp = datetime.now().replace(microsecond=0)
     publisher = Publisher(topic_id="")
     await publisher.publish(
-        PubSubUserMsg(
-            event="create",
-            instance=ESUserBase(
+        UserCreatePubSubMsg(
+            event=PublicUsersPubSubEvent.user_deactivate,
+            data=ESUserBase(
                 **dict(**user.model_dump()),
             ),
-        ).model_dump()
+        )
     )
 
 
@@ -91,12 +92,12 @@ async def update_existing_user(
     user.updated_at = datetime.now()
     publisher = Publisher(topic_id="")
     await publisher.publish(
-        PubSubUserMsg(
-            event="create",
-            instance=ESUserBase(
+        UserCreatePubSubMsg(
+            event=PublicUsersPubSubEvent.user_update,
+            data=ESUserBase(
                 **dict(**user.model_dump()),
             ),
-        ).model_dump()
+        )
     )
     return user
 

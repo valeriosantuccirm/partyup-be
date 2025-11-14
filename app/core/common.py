@@ -68,6 +68,7 @@ async def are_user_info_complete(
         or not user.username
         or not user.location_name
         or not user.location
+        or not user.bio
     )
 
 

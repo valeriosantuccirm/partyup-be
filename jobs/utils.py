@@ -1,6 +1,4 @@
-import base64
-import json
-from typing import Any, Literal
+from typing import Any
 
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.psql.psqlclient import PSQLClient
@@ -37,13 +35,10 @@ def extract_model_data[
         EventRSVPPubSubBaseData,
     )
 ](
-    msg_data: str,
+    msg_data: dict[str, Any],
     model: type[T],
 ) -> T:
-    data_str: str = base64.b64decode(msg_data).decode("utf-8")
-    data_dict: dict[Literal["data"], Any] = json.loads(data_str)
-    model_data: dict[str, Any] = data_dict["data"]
-    return model(**model_data)
+    return model(**msg_data)
 
 
 async def elastic() -> ElasticsearchClient:

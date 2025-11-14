@@ -1,6 +1,8 @@
 import json
 from typing import Any
 
+from google.cloud.pubsub_v1.subscriber.message import Message
+
 from consumers.constants import (
     DAILY_PAYMENTS,
     EVENT_CANCEL,
@@ -28,11 +30,11 @@ from jobs.user_events.event_invite_send import run_send_event_invitations_to_hiv
 
 
 async def handle_pubsub_message(
-    event: dict[str, Any],
+    event: Message,
     context: dict[str, Any],
 ) -> None:
     """Triggered from a message on a Pub/Sub topic."""
-    message: dict[str, Any] = json.loads(event["data"])
+    message: dict[str, Any] = json.loads(event.data)
     if message.get("event") == DAILY_PAYMENTS:
         await process_daily_pending_payments()
     if message.get("event") == USER_FOLLOW:
