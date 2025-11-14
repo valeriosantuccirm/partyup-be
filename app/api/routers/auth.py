@@ -51,7 +51,7 @@ async def sign_up_by_email(
     path="/login/email",
     status_code=status.HTTP_200_OK,
     description="Login with `uername` and `password`.",
-    response_model=Token,
+    response_model=User,
 )
 @manage_transaction
 async def login_by_email_and_password(
@@ -227,7 +227,7 @@ async def logout_user(
     )
 
 
-@router.post(
+@router.put(
     path="/fcm-token/refresh",
     status_code=status.HTTP_204_NO_CONTENT,
     description="Refresh the Firebase Cloud Messaging (FCM) token for push notifications.",
@@ -281,15 +281,16 @@ async def reset_user_password(
     )
 
 
-@router.post(
-    path="/access-token/refresh",
+@router.put(
+    path="/token/refresh",
     status_code=status.HTTP_204_NO_CONTENT,
     description="Refresh the Firebase Cloud Messaging (FCM) token for push notifications.",
 )
 @manage_transaction
-async def refresh_access_token(
-    _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
+async def refresh_token(
     user: Annotated[User, Depends(dependency=get_current_user)],
+    access_token: Annotated[StrictStr | None, Body(default=...)] = None,
+    fcm_token: Annotated[StrictStr | None, Body(default=...)] = None,
 ) -> None:
     """
     Update the user's Firebase Cloud Messaging (FCM) token.
@@ -301,7 +302,8 @@ async def refresh_access_token(
     Returns:
         None
     """
-    return await authfuncs.refresh_user_fcm_token(
+    return await authfuncs.refresh_user_access_token(
         user=user,
+        access_token=access_token,
         fcm_token=fcm_token,
     )

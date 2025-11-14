@@ -31,13 +31,6 @@ class UserCreateBase(BaseModel):
 
     email: EmailStr = Field(default=...)
     hashed_psw: StrictStr = Field(default=..., alias="password")
-    username: StrictStr = Field(default=..., min_length=1)
-    location: StrictStr = Field(default=..., min_length=1)
-    date_of_birth: StrictStr = Field(default=...)
-    last_name: StrictStr = Field(default=..., min_length=1)
-    first_name: StrictStr = Field(default=..., min_length=1)
-    lat_lon: StrictStr = Field(default=..., min_length=3)
-    bio: StrictStr = Field(default=..., min_length=3)
 
 
 class UserRequestBaseModel(BaseModel):

@@ -56,15 +56,8 @@ async def signup_user_by_email(
         user_info_status=UserInfoStatus.INCOMPLETE,
         auth_provider=OAuthProvider.EMAIL,
         profile_image=firebase_user.photo_url,
-        username=user_form.username,
         hashed_pswd=ph.hash(user_form.hashed_psw),
         fcm_token=request.headers.get("X-FCM-Token"),
-        bio=user_form.bio,
-        location_name=user_form.location,
-        location=user_form.lat_lon,
-        first_name=user_form.first_name,
-        last_name=user_form.last_name,
-        date_of_birth=user_form.date_of_birth,
     )
     if not user.email_verified:
         sender = Email(
@@ -184,9 +177,17 @@ async def refresh_user_fcm_token(
 
 async def refresh_user_access_token(
     user: User,
-    fcm_token: FCMToken,
+    access_token: str | None = None,
+    fcm_token: str | None = None,
 ) -> None:
-    user.fcm_token = fcm_token.fcm_token
+    if access_token:
+        redis.set(
+            name=f"access_token:{user.firebase_uid}",
+            value=access_token,
+            ex=3000,
+        )  # 50 mins
+    if fcm_token:
+        user.fcm_token = fcm_token
 
 
 async def reset_user_password(
@@ -254,8 +255,8 @@ async def login_with_eamil_and_pswd(
         redis.set(
             name=f"access_token:{firebase_user.uid}",
             value=id_token,
-            ex=600,
-        )  # 10 mins
+            ex=3000,
+        )  # 50 mins
         return user
     except VerifyMismatchError as e:
         raise HTTPException(

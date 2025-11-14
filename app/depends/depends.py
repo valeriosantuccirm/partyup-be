@@ -50,8 +50,8 @@ async def get_firebase_user(
         redis.set(
             name=f"access_token:{firebase_user.uid}",
             value=token,
-            ex=600,
-        )  # 10 mins
+            ex=3000,
+        )  # 50 mins
         return FirebaseUser(
             uid=decoded_token["uid"],
             email=decoded_token["email"],
