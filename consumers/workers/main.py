@@ -15,6 +15,7 @@ from consumers.constants import (
     USER_CREATE,
     USER_FOLLOW,
     USER_UNFOLLOW,
+    USER_UPDATE,
 )
 from jobs.hivers.hiver_respond_request import run_respond_hiver_request
 from jobs.payments.main import process_daily_pending_payments
@@ -27,6 +28,7 @@ from jobs.public_users.user_unfollow import run_unfollow_user
 from jobs.user_events.event_cancel import run_cancel_user_event
 from jobs.user_events.event_invite_rsvp import crun_rsvp_event_participation
 from jobs.user_events.event_invite_send import run_send_event_invitations_to_hivers
+from jobs.users.user_update import run_update_user
 
 
 async def handle_pubsub_message(
@@ -43,6 +45,10 @@ async def handle_pubsub_message(
         )
     if message.get("event") == USER_CREATE:
         await run_create_user(
+            msg_data=message["data"],
+        )
+    if message.get("event") == USER_UPDATE:
+        await run_update_user(
             msg_data=message["data"],
         )
     if message.get("event") == USER_UNFOLLOW:

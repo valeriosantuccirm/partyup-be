@@ -94,7 +94,7 @@ async def login_by_email_and_password(
 @router.post(
     path="/signin/google",
     status_code=status.HTTP_200_OK,
-    response_model=Token,
+    response_model=User,
     description="Sign in or sign up a user using Google authentication.",
 )
 @manage_transaction

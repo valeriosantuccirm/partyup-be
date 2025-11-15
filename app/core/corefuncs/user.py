@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import ColumnElement
 from starlette import status
 
+from app.config import settings
 from app.core.common import (
     are_user_info_complete,
     is_user_unique_params_already_assigned,
@@ -37,7 +38,9 @@ async def deactivate_account(
     user.is_active = False
     user.username = None
     user.logout_timestamp = datetime.now().replace(microsecond=0)
-    publisher = Publisher(topic_id="")
+    publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_USERS_TOPIC_ID,
+    )
     await publisher.publish(
         UserCreatePubSubMsg(
             event=PublicUsersPubSubEvent.user_deactivate,
@@ -90,7 +93,9 @@ async def update_existing_user(
         else UserInfoStatus.INCOMPLETE
     )
     user.updated_at = datetime.now()
-    publisher = Publisher(topic_id="")
+    publisher = Publisher(
+        topic_id=settings.GOOGLE_ELASTIC_USERS_TOPIC_ID,
+    )
     await publisher.publish(
         UserCreatePubSubMsg(
             event=PublicUsersPubSubEvent.user_update,

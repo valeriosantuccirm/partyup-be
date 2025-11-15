@@ -85,6 +85,7 @@ async def search_accounts(
         limit=limit,
         offset=offset,
         source=[
+            "email",
             "username",
             "profile_image",
             "followers_count",

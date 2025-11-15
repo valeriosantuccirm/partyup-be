@@ -75,7 +75,7 @@ async def search_events(
     user: Annotated[User, Depends(dependency=admit_user)],
     lat: Annotated[float, Query(default=...)],
     lon: Annotated[float, Query(default=...)],
-    user_input: Annotated[StrictStr, Query(default=...)],
+    q: Annotated[StrictStr, Query(default=...)],
     radius: Annotated[int, Query(default=...)] = 10,
     status: Annotated[EventStatus, Query(default=...)] = EventStatus.UPCOMING,
     limit: Annotated[int, Query(default=...)] = 10,
@@ -87,7 +87,7 @@ async def search_events(
     Args:
         lat (float): Latitude of the user's location for proximity-based search.
         lon (float): Longitude of the user's location for proximity-based search.
-        user_input (StrictStr): Search query, such as event keywords or titles.
+        q (StrictStr): Search query, such as event keywords or titles.
         radius (int, optional): Search radius in kilometers (default is 10).
         status (EventStatus, optional): Filter events based on status (default is 'UPCOMING').
         limit (int, optional): Maximum number of events to return (default is 10).
@@ -103,7 +103,7 @@ async def search_events(
         lon=lon,
         status=status,
         radius=radius,
-        user_input=user_input,
+        user_input=q,
         limit=limit,
         offset=offset,
     )

@@ -29,7 +29,7 @@ router = APIRouter(prefix="/users/public")
 async def search_accounts(
     esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
-    user_input: Annotated[StrictStr, Query(default=...)],
+    q: Annotated[StrictStr, Query(default=...)],
     lat: Annotated[float | None, Query(default=...)] = None,
     lon: Annotated[float | None, Query(default=...)] = None,
     radius: Annotated[int, Query(default=...)] = 50,
@@ -41,7 +41,7 @@ async def search_accounts(
 
     Args:
         user (User): The authenticated user.
-        user_input (StrictStr): Search query.
+        q (StrictStr): Search query.
         lat (float | None): Latitude for filtering results by location.
         lon (float | None): Longitude for filtering results by location.
         radius (int): Search radius in km.
@@ -57,7 +57,7 @@ async def search_accounts(
         lat=lat,
         lon=lon,
         radius=radius,
-        user_input=user_input,
+        user_input=q,
         limit=limit,
         offset=offset,
     )

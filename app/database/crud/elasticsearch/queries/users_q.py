@@ -239,21 +239,21 @@ def find_public_users(
                             }
                         }
                     },
-                    {
-                        "script_score": {  # Extra boost if username or full name matches exactly
-                            "script": {
-                                "source": """
-                                double username_boost = params.username_match ? 3 : 1;
-                                double full_name_boost = params.fullname_match ? 2.5 : 1;
-                                return _score * username_boost * full_name_boost;
-                            """,
-                                "params": {
-                                    "username_match": user_input in str(user_username),
-                                    "fullname_match": user_input in str(user_fullname),
-                                },
-                            }
-                        }
-                    },
+                    # {
+                    #     "script_score": {  # Extra boost if username or full name matches exactly
+                    #         "script": {
+                    #             "source": """
+                    #             double username_boost = params.username_match ? 3 : 1;
+                    #             double full_name_boost = params.fullname_match ? 2.5 : 1;
+                    #             return _score * username_boost * full_name_boost;
+                    #         """,
+                    #             "params": {
+                    #                 "username_match": user_input in str(user_username),
+                    #                 "fullname_match": user_input in str(user_fullname),
+                    #             },
+                    #         }
+                    #     }
+                    # },
                 ],
                 "score_mode": "sum",
                 "boost_mode": "sum",
