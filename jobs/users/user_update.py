@@ -38,7 +38,7 @@ async def run_update_user(
                 logger.info("No existing user found to update. Exiting")
                 raise Exception
             fields_to_update: dict[str, Any] = {
-                **existing_user.model_dump(),
+                **existing_user.model_dump(exclude={"id", "_id"}),
                 **user.model_dump(),
             }
             await elastic.update(
