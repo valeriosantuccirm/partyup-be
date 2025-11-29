@@ -15,6 +15,7 @@ from pydantic import (
 from starlette import status
 from starlette.datastructures import UploadFile as starletteUploadFile
 
+from app.database.models.enums.payee_account import CountryCode
 from app.database.models.enums.scheduled_payment import Currency
 from app.datamodels.utils import validate_fileimage_extension
 
@@ -229,3 +230,7 @@ class ScheduledPaymentRequest(BaseModel):
     currency: Currency = Field(default=Currency.eur)
     event_date: datetime = Field(default=...)
     paye_account_guid: UUID = Field(default=...)
+
+
+class OnboardingRequestBody(BaseModel):
+    country_code: CountryCode = Field(default=CountryCode.us)

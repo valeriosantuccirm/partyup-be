@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Path, Query, Request
@@ -7,13 +7,16 @@ from starlette import status
 from app.core.corefuncs import payments
 from app.core.decorators import manage_transaction
 from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.enums.payee_account import CountryCode
+from app.database.models.enums.payee_account import PayeeAccountStatus
 from app.database.models.psql.payee_account import PayeeAccount
 from app.database.models.psql.scheduled_payment import ScheduledPayment
 from app.database.models.psql.stripe_customer import StripeCustomer
 from app.database.models.psql.user import User
 from app.database.session import psqlclient
-from app.datamodels.schemas.request import ScheduledPaymentRequest
+from app.datamodels.schemas.request import (
+    OnboardingRequestBody,
+    ScheduledPaymentRequest,
+)
 from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/payments")
@@ -84,6 +87,7 @@ async def schedule_payment_intent(
 @manage_transaction
 async def make_payment(
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    _: Annotated[User, Depends(dependency=admit_user)],
     scheduled_payment_guid: Annotated[UUID, Path(default=...)],
     customer_guid: Annotated[UUID, Path(default=...)],
 ) -> ScheduledPayment:
@@ -96,19 +100,40 @@ async def make_payment(
 
 
 @router.post(
-    path="/payee-account/onboard",
+    path="/payee-account/onboarding",
     status_code=status.HTTP_201_CREATED,
 )
 @manage_transaction
 async def create_payee_account(
-    _: Annotated[User, Depends(dependency=admit_user)],
-    country_code: Annotated[CountryCode, Body(default=...)],
-    request: Request,  # TODO: for test
+    request: Annotated[Request, Any],  # TODO: for test
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    user: Annotated[User, Depends(dependency=admit_user)],
+    payload: Annotated[OnboardingRequestBody, Body(default=...)],
 ) -> str:
     """ """
     return await payments.create_stripe_payee_account(
-        country_code=country_code,
+        db_session=db_session,
+        user=user,
+        country_code=payload.country_code,
         request=request,
+    )
+
+
+@router.get(
+    path="/payee-account/onboarding/return-url-callback",
+    status_code=status.HTTP_200_OK,
+)
+@manage_transaction
+async def get_stripe_return_url(
+    request: Annotated[Request, Any],  # TODO: for test
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    token: Annotated[str, Query(default=...)],
+) -> str:
+    """ """
+    return await payments.get_stripe_customer_refresh_link(
+        db_session=db_session,
+        request=request,
+        auth_token=token,
     )
 
 
@@ -120,13 +145,44 @@ async def create_payee_account(
 @manage_transaction
 async def confirm_payee_account_creation(
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    user: Annotated[User, Depends(dependency=admit_user)],
     spaccount_id: Annotated[str, Query(default=...)],
-    token: Annotated[str, Query(default=...)],
 ) -> PayeeAccount:
     """ """
-
     return await payments.complete_payee_account_onboarding(
         db_session=db_session,
+        user=user,
         spaccount_id=spaccount_id,
-        token=token,
+    )
+
+
+@router.get(
+    path="/account-status",
+    status_code=status.HTTP_201_CREATED,
+)
+@manage_transaction
+async def check_payee_account_status(
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    user: Annotated[User, Depends(dependency=admit_user)],
+) -> PayeeAccountStatus:
+    """ """
+    return await payments.get_payee_account_status(
+        db_session=db_session,
+        user=user,
+    )
+
+
+@router.get(
+    path="/customers/me/account",
+    status_code=status.HTTP_200_OK,
+)
+@manage_transaction
+async def get_payee_account_card(
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    user: Annotated[User, Depends(dependency=admit_user)],
+) -> PayeeAccount:
+    """ """
+    return await payments.get_payee_account(
+        db_session=db_session,
+        user=user,
     )

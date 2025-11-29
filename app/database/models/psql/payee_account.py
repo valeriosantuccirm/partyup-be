@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from pydantic import StrictStr
 from sqlmodel import Field, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
-from app.database.models.enums.payee_account import CountryCode
+from app.database.models.enums.payee_account import CountryCode, PayeeAccountStatus
 
 
 class PayeeAccount(SQLModel, table=True):
@@ -17,10 +17,13 @@ class PayeeAccount(SQLModel, table=True):
 
     __tablename__: str = "payee_account"  # pyright: ignore[reportIncompatibleVariableOverride]
 
-    account_id: StrictStr = Field(default=..., nullable=False, unique=True)
-    country_code: CountryCode = Field(default=..., nullable=False)
+    account_id: StrictStr | None = Field(default=None, nullable=True, unique=True)
+    country_code: CountryCode | None = Field(default=None, nullable=True)
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
     guid: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    status: PayeeAccountStatus = Field(
+        default=PayeeAccountStatus.PENDING, nullable=False
+    )
     updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
     user_guid: UUID = Field(
         foreign_key="user.guid", nullable=False, index=True, unique=True

@@ -9,7 +9,7 @@ from starlette import status
 
 from app.config import settings
 from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.enums.payee_account import CountryCode
+from app.database.models.enums.payee_account import CountryCode, PayeeAccountStatus
 from app.database.models.psql.payee_account import PayeeAccount
 from app.database.models.psql.payment_intent import PaymentIntent
 from app.database.models.psql.scheduled_payment import ScheduledPayment
@@ -179,42 +179,59 @@ async def make_scheduled_payment(
 
 
 async def create_stripe_payee_account(
+    db_session: PSQLClient,
+    user: User,
     country_code: CountryCode,
     request: Request,
 ) -> str:
     auth_creds: str = request.headers.get("authorization", "")
     token: str = auth_creds.split("Bearer")[-1].lstrip()
-    account: stripe.Account = stripe.Account.create(
-        type="express",
-        country=country_code.value,
-        capabilities={
-            "transfers": {
-                "requested": True,
-            },
-            "card_payments": {
-                "requested": True,
-            },
-        },
-        business_type="individual",
+    customer: PayeeAccount | None = await db_session.find_one_or_none(
+        model=PayeeAccount, criteria=(Column("user_guid") == user.guid,)
     )
+    if customer and customer.status == PayeeAccountStatus.ACTIVE:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT)
+
+    if customer:
+        account: stripe.Account = stripe.Account.retrieve(id=customer.account_id)  # pyright: ignore[reportUnknownMemberType]
+    else:
+        account: stripe.Account = stripe.Account.create(
+            type="express",
+            country=country_code.value,
+            capabilities={
+                "transfers": {
+                    "requested": True,
+                },
+                "card_payments": {
+                    "requested": True,
+                },
+            },
+            business_type="individual",
+        )
     account_link: stripe.AccountLink = stripe.AccountLink.create(
         account=account.id,
-        refresh_url=f"{request.base_url!s}payments/users/me/profile&token={token}",
-        return_url=f"{request.base_url!s}payments/payee-account/onboarding-complete?token={token}&spaccount_id={account.id}",
+        refresh_url=f"{request.base_url!s}payments/payee-account/onboarding/return-url-callback?token={token}",
+        return_url=f"{request.base_url!s}users/me/profile",
         type="account_onboarding",
     )
+    if not customer:
+        await db_session.add(
+            instance=PayeeAccount(
+                user_guid=user.guid,
+                account_id=account.id,
+            )
+        )
     return account_link.url
 
 
-async def complete_payee_account_onboarding(
+async def get_stripe_customer_refresh_link(
     db_session: PSQLClient,
-    spaccount_id: str,
-    token: str,
-) -> PayeeAccount:
-    # stripe.Account.delete("acct_1SKISG2dfKZNjS3i")
+    request: Request,
+    auth_token: str,
+) -> str:
     firebase_user: FirebaseUser = await get_firebase_user(
         authcreds=HTTPAuthorizationCredentials(
-            credentials=token,
+            credentials=auth_token,
             scheme="Bearer",
         ),
     )
@@ -222,13 +239,61 @@ async def complete_payee_account_onboarding(
         model=User, criteria=(Column("email") == firebase_user.email,)
     )
     if not psql_user:
-        raise HTTPException("auth")
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    customer: PayeeAccount | None = await db_session.find_one_or_none(
+        model=PayeeAccount, criteria=(Column("user_guid") == psql_user.guid,)
+    )
+    if not customer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    account: stripe.Account = stripe.Account.retrieve(id=customer.account_id)  # pyright: ignore[reportUnknownMemberType]
+    account_link: stripe.AccountLink = stripe.AccountLink.create(
+        account=account.id,
+        refresh_url=f"{request.base_url!s}payments/payee-account/onboarding/return-url-callback?token={auth_token}",
+        return_url=f"{request.base_url!s}users/me/profile",
+        type="account_onboarding",
+    )
+    return (
+        account_link.url
+    )  # TODO: when refreshing i need on FE to redirect the returned account link
+
+
+async def complete_payee_account_onboarding(
+    db_session: PSQLClient,
+    user: User,
+    spaccount_id: str,
+) -> PayeeAccount:
+    payee_account: PayeeAccount | None = await db_session.find_one_or_none(
+        model=PayeeAccount, criteria=(Column("user_guid") == user.guid,)
+    )
+    if not payee_account:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
 
     stripe_payee: stripe.Account = stripe.Account.retrieve(id=spaccount_id)  # pyright: ignore[reportUnknownMemberType]
-    new_payee = PayeeAccount(
-        account_id=spaccount_id,
-        user_guid=psql_user.guid,
-        country_code=CountryCode(stripe_payee.country),
+    payee_account.account_id = stripe_payee.id
+    payee_account.country_code = CountryCode(stripe_payee.country)
+    payee_account.status = PayeeAccountStatus.ACTIVE
+    return payee_account
+
+
+async def get_payee_account_status(
+    db_session: PSQLClient,
+    user: User,
+) -> PayeeAccountStatus:
+    payee_account: PayeeAccount | None = await db_session.find_one_or_none(
+        model=PayeeAccount, criteria=(Column("user_guid") == user.guid,)
     )
-    await db_session.add(new_payee)
-    return new_payee
+    if not payee_account:
+        return PayeeAccountStatus.NOT_CONNECTED
+    return payee_account.status
+
+
+async def get_payee_account(
+    db_session: PSQLClient,
+    user: User,
+) -> PayeeAccount:
+    payee_account: PayeeAccount | None = await db_session.find_one_or_none(
+        model=PayeeAccount, criteria=(Column("user_guid") == user.guid,)
+    )
+    if not payee_account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return payee_account

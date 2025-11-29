@@ -8,3 +8,9 @@ class CountryCode(Enum):
     de = "DE"
     it = "IT"
     at = "AT"
+
+
+class PayeeAccountStatus(Enum):
+    ACTIVE = "ACTIVE"
+    NOT_CONNECTED = "NOT_CONNECTED"
+    PENDING = "PENDING"
