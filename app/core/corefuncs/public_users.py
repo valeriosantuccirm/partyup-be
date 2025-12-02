@@ -152,7 +152,7 @@ async def follow_user(
             data=FollowUserBaseMsgData(
                 user_follower=user_follower,
                 psql_followed_user_guid=psql_followed_user.guid,
-                user_guid=user_guid,
+                user_guid=user.guid,
                 user_username=user.username,
                 user_profile_img=user.profile_image,
                 psql_followed_user_fcm_token=psql_followed_user.fcm_token,

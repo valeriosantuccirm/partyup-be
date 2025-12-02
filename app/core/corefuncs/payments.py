@@ -252,6 +252,13 @@ async def get_stripe_customer_refresh_link(
         return_url=f"{request.base_url!s}users/me/profile",
         type="account_onboarding",
     )
+    customer.country_code = CountryCode(account.country)
+    acc_status = PayeeAccountStatus.PENDING
+    customer.status = (
+        PayeeAccountStatus.ACTIVE
+        if account.charges_enabled and account.payouts_enabled
+        else acc_status
+    )
     return (
         account_link.url
     )  # TODO: when refreshing i need on FE to redirect the returned account link

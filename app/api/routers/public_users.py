@@ -90,7 +90,7 @@ async def get_user_board_by_visibility(
     )
 
 
-@router.post(
+@router.put(
     path="/{user_guid}/follow",
     status_code=status.HTTP_204_NO_CONTENT,
     description="Follow another user.",

@@ -1,9 +1,6 @@
 from typing import Any
 
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_user import ESUserBase
-from app.database.session import esclient, psqlclient
 from app.pubsub.events.schemas import (
     EventCancelPubSubBaseData,
     EventInvitePubSubBaseData,
@@ -39,11 +36,3 @@ def extract_model_data[
     model: type[T],
 ) -> T:
     return model(**msg_data)
-
-
-async def elastic() -> ElasticsearchClient:
-    return await anext(esclient())
-
-
-async def psql() -> PSQLClient:
-    return await anext(psqlclient())
