@@ -21,7 +21,6 @@ services:
       - elasticsearch
       - traefik
       - kibana
-      # - flower
     networks:
       - app-network
     labels:
@@ -129,34 +128,6 @@ services:
       - app-network
     labels:
       - "traefik.enable=false"
-
-  # Celery + Flower (monitoring)
-  # celery:
-  #   build: .
-  #   command: celery -A celery_app.celery_app worker --loglevel=info -Q partyup_user_hivers_queue,partyup_events_queue,partyup_public_users_queue,partyup_user_events_queue
-  #   environment:
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #     - PYTHONPATH=/app
-  #   depends_on:
-  #     - redis
-  #   networks:
-  #   - app-network
-  #   labels:
-  #     - "traefik.enable=false"
-
-  # flower:
-  #   image: mher/flower:latest
-  #   container_name: flower
-  #   command: celery --broker=redis://redis:6379 flower --port=5555
-  #   ports:
-  #     - "5555:5555"
-  #   depends_on:
-  #     - celery
-  #   networks:
-  #     - app-network
-  #   labels:
-  #     - "traefik.enable=false"
 
   # Traefik reverse proxy
   traefik:

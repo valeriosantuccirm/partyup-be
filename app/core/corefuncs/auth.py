@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from typing import Any
 
-import requests
+import httpx
 from argon2.exceptions import VerifyMismatchError
 from fastapi import HTTPException, Request
 from firebase_admin import auth
@@ -245,11 +245,12 @@ async def login_with_eamil_and_pswd(
             "password": password,
             "returnSecureToken": True,
         }
-        res = requests.post(
-            f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={API_KEY}",
-            json=payload,
-        )
-        res.raise_for_status()
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={API_KEY}",
+                json=payload,
+            )
+            res.raise_for_status()
         id_token: str = res.json()["idToken"]
         firebase_user: UserRecord = auth.get_user(uid=user.firebase_uid)
         redis.set(

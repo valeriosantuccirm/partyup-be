@@ -2,10 +2,8 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-import boto3
 import firebase_admin
 from argon2 import PasswordHasher
-from botocore.client import BaseClient
 from dotenv import load_dotenv
 from elasticsearch import AsyncElasticsearch
 from fastapi_mail import ConnectionConfig
@@ -134,14 +132,7 @@ def _settings() -> Settings:
 settings: Settings = _settings()
 # init AsyncElasticsearch
 es: AsyncElasticsearch = AsyncElasticsearch(hosts=[settings.ES_URI])
-# init boto3 client
-s3: BaseClient = boto3.client(
-    "s3",
-    endpoint_url=settings.AWS_ENDPOINT_URL,
-    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-    region_name=settings.AWS_REGION_NAME,
-)
+# TODO: init GC Storage
 # init Redis
 redis: Redis = Redis(
     host=settings.REDIS_HOST,

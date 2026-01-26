@@ -5,10 +5,10 @@ steps:
     args:
       - -c
       - |
-        cd ../..                    # vai alla root del repo
+        cd ../..
         pip install uv
         uv sync --frozen
-        uv run pytest -q || echo "⚠️ Test non trovati o falliti, proseguo comunque"
+        uv run pytest
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     id: "deploy-function"

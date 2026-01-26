@@ -1,7 +1,7 @@
 # ruff.toml
 
 # Python version target (adjust if needed)
-target-version = "py313"
+target-version = "py314"
 
 # Max line length
 line-length = 88

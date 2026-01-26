@@ -19,7 +19,7 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/*
 
 # Install uv
-RUN curl -L https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-unknown-linux-musl.tar.gz \
+RUN curl -L https://github.com/astral-sh/uv/releases/latest/download/uv-aarch64-unknown-linux-musl.tar.gz \
   -o uv.tar.gz && \
   tar -xzf uv.tar.gz && \
   mv uv-*/uv /usr/local/bin/uv && \

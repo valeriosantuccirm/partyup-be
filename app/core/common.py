@@ -6,7 +6,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy import Column, ColumnElement
 from starlette import status
 
-from app.config import s3, settings
+from app.config import settings
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.elasticsearch.queries import common_q
 from app.database.crud.psql.psqlclient import PSQLClient
@@ -80,13 +80,14 @@ async def upload_content_to_s3(
     try:
         content_data: bytes = media_content.file.read()
         content_filename: str = f"{dirpath}/{uuid4()}.{ext}"
-        s3.put_object(
-            Bucket=settings.AWS_BUCKET_NAME,
-            Key=content_filename,
-            Body=content_data,
-            ContentType=media_content.content_type,
-            ACL="public-read",  # Make the image publicly accessible
-        )
+        # TODO: replace with GC storage!
+        # s3.put_object(
+        #     Bucket=settings.AWS_BUCKET_NAME,
+        #     Key=content_filename,
+        #     Body=content_data,
+        #     ContentType=media_content.content_type,
+        #     ACL="public-read",  # Make the image publicly accessible
+        # )
         del content_data
         return (
             f"https://{settings.AWS_BUCKET_NAME}.s3.amazonaws.com/{content_filename}",
@@ -103,10 +104,12 @@ async def delete_content_from_s3(
     media_filename: str,
 ) -> None:
     try:
-        s3.delete_object(
-            Bucket=settings.AWS_BUCKET_NAME,
-            Key=media_filename,
-        )
+        # TODO: replace with GC storage!
+        ...
+        # s3.delete_object(
+        #     Bucket=settings.AWS_BUCKET_NAME,
+        #     Key=media_filename,
+        # )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
