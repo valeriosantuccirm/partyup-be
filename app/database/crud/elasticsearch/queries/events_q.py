@@ -73,13 +73,13 @@ def build_leaderboard_events(
                                 },
                             }
                         ],
-                        "must_not": [
-                            {
-                                "term": {
-                                    "creator_guid": creator_guid,
-                                },
-                            }
-                        ],
+                        # "must_not": [
+                        #     {
+                        #         "term": {
+                        #             "creator_guid": creator_guid,
+                        #         },
+                        #     }
+                        # ],
                         "should": [
                             {
                                 "multi_match": {
@@ -169,13 +169,13 @@ def search_events(
                         },
                     },
                 ],
-                "must_not": [
-                    {
-                        "term": {
-                            "creator_guid": creator_guid,
-                        },
-                    },
-                ],
+                # "must_not": [
+                #     {
+                #         "term": {
+                #             "creator_guid": creator_guid,
+                #         },
+                #     },
+                # ],
                 "should": [
                     {
                         "function_score": {

@@ -74,12 +74,12 @@ async def are_user_info_complete(
 
 async def upload_content_to_s3(
     media_content: UploadFile,
-    dirpath: Literal["user-profiles", "event-media"],
+    dirpath: Literal["user-profile", "event-media"],
     ext: str,
 ) -> tuple[str, str]:
     try:
         content_data: bytes = media_content.file.read()
-        content_filename: str = f"{dirpath}/{uuid4()}.{ext}"
+        content_filename: str = f"{dirpath}/{uuid4()}{ext}"
         # TODO: replace with GC storage!
         # s3.put_object(
         #     Bucket=settings.AWS_BUCKET_NAME,

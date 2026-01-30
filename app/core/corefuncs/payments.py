@@ -20,8 +20,6 @@ from app.datamodels.schemas.request import ScheduledPaymentRequest
 from app.datamodels.utils import to_stripe_amount_cents
 from app.depends.depends import get_firebase_user
 
-stripe.api_key = settings.STRIPE_SECRET_API_KEY
-
 
 async def create_stripe_customer(
     db_session: PSQLClient,

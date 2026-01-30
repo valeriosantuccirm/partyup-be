@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.corefuncs import user_events
+from app.core.decorators import manage_transaction
 from app.database.crud.elasticsearch.esclient import ElasticsearchClient
 from app.database.crud.psql.psqlclient import PSQLClient
 from app.database.models.elasticsearch.es_event import ESEvent, ESEventBase
@@ -32,6 +33,7 @@ router = APIRouter(prefix="/users/me/events")
     status_code=status.HTTP_201_CREATED,
     description="Create a new event with optional cover image.",
 )
+@manage_transaction
 async def create_event(
     esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
@@ -76,6 +78,7 @@ async def create_event(
     status_code=status.HTTP_200_OK,
     description="Retrieve a list of events for the logged-in user.",
 )
+@manage_transaction
 async def get_events(
     _: Annotated[AsyncSession, Depends(dependency=psqlclient)],
     esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
@@ -104,6 +107,7 @@ async def get_events(
     status_code=status.HTTP_204_NO_CONTENT,
     description="Cancel an event created by the logged-in user.",
 )
+@manage_transaction
 async def cancel_event(
     esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
@@ -135,6 +139,7 @@ async def cancel_event(
     description="Update an existing event's details and/or cover image.",
     response_model=Event,
 )
+@manage_transaction
 async def update_event(
     esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
@@ -184,6 +189,7 @@ async def update_event(
     status_code=status.HTTP_201_CREATED,
     description="Send event invitations to selected hivers.",
 )
+@manage_transaction
 async def send_event_invitations_to_hivers(
     esclient: Annotated[ElasticsearchClient, Depends(dependency=esclient)],
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
@@ -205,6 +211,7 @@ async def send_event_invitations_to_hivers(
     status_code=status.HTTP_204_NO_CONTENT,
     description="RSVP to an event by accepting or decline a join request.",
 )
+@manage_transaction
 async def rsvp_to_event_join_request(
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],

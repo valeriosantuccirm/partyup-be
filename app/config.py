@@ -3,11 +3,12 @@ from functools import lru_cache
 from pathlib import Path
 
 import firebase_admin
+import stripe
 from argon2 import PasswordHasher
 from dotenv import load_dotenv
 from elasticsearch import AsyncElasticsearch
 from fastapi_mail import ConnectionConfig
-from firebase_admin import credentials
+from firebase_admin.credentials import Certificate
 from jinja2 import Environment, PackageLoader, select_autoescape
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
@@ -130,6 +131,8 @@ def _settings() -> Settings:
 
 
 settings: Settings = _settings()
+# Stripe
+stripe.api_key = settings.STRIPE_SECRET_API_KEY
 # init AsyncElasticsearch
 es: AsyncElasticsearch = AsyncElasticsearch(hosts=[settings.ES_URI])
 # TODO: init GC Storage
@@ -140,7 +143,7 @@ redis: Redis = Redis(
     password=settings.REDIS_PSW,
 )
 # init Firebase FCM
-fcm_cred: credentials.Certificate = credentials.Certificate(
+fcm_cred: Certificate = Certificate(
     f"{Path(__file__).resolve().cwd()!s}/.creds/partyup-be-aaf0d-firebase-adminsdk-fbsvc-6059566557.json"
 )
 firebase_admin.initialize_app(credential=fcm_cred)

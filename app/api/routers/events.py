@@ -110,7 +110,7 @@ async def search_events(
 
 
 @router.post(
-    path="/events/{event_guid}/media",
+    path="/{event_guid}/media",
     response_model=Media,
     status_code=status.HTTP_201_CREATED,
 )
@@ -136,7 +136,7 @@ async def upload_event_media(
 
 
 @router.put(
-    path="/events/{event_guid}/join",
+    path="/{event_guid}/join",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 @manage_transaction
@@ -153,7 +153,7 @@ async def join_public_event(
 
 
 @router.delete(
-    path="/events/{event_guid}/revoke-join",
+    path="/{event_guid}/revoke-join",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 @manage_transaction

@@ -28,7 +28,7 @@ router = APIRouter(prefix="/payments")
     status_code=status.HTTP_201_CREATED,
 )
 @manage_transaction
-async def get_leaderboard_events(
+async def create_customer(
     db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
     user: Annotated[User, Depends(dependency=admit_user)],
 ) -> StripeCustomer:

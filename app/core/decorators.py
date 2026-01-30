@@ -9,7 +9,7 @@ from asyncpg.exceptions import (
 from fastapi import Request
 from fastapi.exceptions import HTTPException
 from redis.typing import ResponseT
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
@@ -64,20 +64,20 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
             if _session:
                 await _session.flush()
                 await _session.commit()
-            logger.debug(f"Returning response: {rv}")
+            logger.debug(msg=f"Returning response: {rv}")
             return rv
         except (ValueError, TypeError) as e:
             if _session:
                 await _session.rollback()
-                logger.error(e)
+                logger.error(msg=e)
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=e.args,
             ) from e
-        except (IntegrityError, UniqueViolationError) as e:
+        except (IntegrityError, UniqueViolationError, DBAPIError) as e:
             if _session:
                 await _session.rollback()
-                logger.error(e)
+                logger.error(msg=e)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=e.args,
@@ -85,7 +85,7 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
         except KeyError as e:
             if _session:
                 await _session.rollback()
-                logger.error(e)
+                logger.error(msg=e)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=e.args,
@@ -93,12 +93,12 @@ def manage_transaction(func: Callable[..., Any]) -> Any:
         except HTTPException as e:
             if _session:
                 await _session.rollback()
-                logger.error(e)
+                logger.error(msg=e)
             raise e
         except Exception as e:
             if _session:
                 await _session.rollback()
-                logger.error(e)
+                logger.error(msg=e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=e.args,

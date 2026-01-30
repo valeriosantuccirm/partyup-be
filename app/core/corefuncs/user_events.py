@@ -54,9 +54,11 @@ async def create_event(
         )
         media_path, media_filename = await upload_content_to_s3(
             media_content=event_request.cover_image,
-            dirpath="user-profiles",
+            dirpath="user-profile",
             ext=ext,
         )
+    if event_request.end_date:
+        event_request.end_date = event_request.end_date.replace(tzinfo=None)
     new_event = Event(
         cover_image_url=media_path,
         cover_image_filename=media_filename,
@@ -66,7 +68,7 @@ async def create_event(
         location=event_request.location,
         max_attendees=event_request.max_attendees,
         min_donation=event_request.min_donation,
-        start_date=event_request.start_date,
+        start_date=event_request.start_date.replace(tzinfo=None),
         title=event_request.title,
         creator_guid=user.guid,
         creator_popularity_score=user.popularity_score,
