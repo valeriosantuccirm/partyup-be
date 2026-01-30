@@ -224,3 +224,25 @@ async def rsvp_to_event_join_request(
         event_guid=event_guid,
         accept=accept,
     )
+
+
+@router.get(
+    path="/joined",
+    response_model=list[ESEventBase],
+    status_code=status.HTTP_200_OK,
+    description="Retrieve a list of events for the logged-in user.",
+)
+@manage_transaction
+async def get_joined_events(
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    user: Annotated[User, Depends(dependency=admit_user)],
+    status: Annotated[EventStatus, Query(default=...)] = EventStatus.UPCOMING,
+) -> list[ESEventBase]:
+    """
+    Events a user is going to attend or attended?
+    """
+    return await user_events.get_user_joined_events(
+        db_session=db_session,
+        user=user,
+        status=status,
+    )

@@ -70,6 +70,7 @@ class ESEventBase(BaseModel):
     hivers_reserved_slots: StrictInt = Field(default=...)
     followers_attendees_count: StrictInt = Field(default=...)
     is_private: StrictBool = Field(default=...)
+    payee_account_guid: UUID | None = Field(default=None)
     ponr: datetime | None = Field(default=...)
     public_attendees_count: StrictInt = Field(default=...)
     total_attendees_count: StrictInt = Field(default=...)
@@ -82,7 +83,7 @@ class ESEventBase(BaseModel):
             return value.isoformat()
         return value
 
-    @field_serializer("creator_guid", "guid")
+    @field_serializer("creator_guid", "guid", "payee_account_guid")
     def uuid_to_str(self, guid: UUID) -> str:
         return str(guid)
 

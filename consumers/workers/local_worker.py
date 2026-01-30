@@ -1,11 +1,12 @@
 import asyncio
+import os
 
 from google.cloud import pubsub_v1
 
 from consumers.workers.main import handle_pubsub_message
 
-PROJECT_ID = "partyup-be-aaf0d"
-SUBSCRIPTION_ID = "elastic-users-sub"
+PROJECT_ID: str = os.environ["GOOGLE_CLOUD_PROJECT"]
+SUBSCRIPTION_ID: str = os.environ["SUBSCRIPTION_ID"]
 
 
 async def callback(message):

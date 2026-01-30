@@ -229,7 +229,11 @@ class ScheduledPaymentRequest(BaseModel):
     amount: StrictFloat = Field(default=0.0)
     currency: Currency = Field(default=Currency.eur)
     event_date: datetime = Field(default=...)
-    paye_account_guid: UUID = Field(default=...)
+    payee_account_guid: UUID = Field(default=...)
+
+    @field_validator("currency", mode="before")
+    def validate_extension(cls, value: str) -> str:
+        return value.upper()
 
 
 class OnboardingRequestBody(BaseModel):

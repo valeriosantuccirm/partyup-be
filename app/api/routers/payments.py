@@ -1,6 +1,7 @@
 from typing import Annotated, Any
 from uuid import UUID
 
+import stripe
 from fastapi import APIRouter, Body, Depends, Path, Query, Request
 from starlette import status
 
@@ -173,7 +174,7 @@ async def check_payee_account_status(
 
 
 @router.get(
-    path="/customers/me/account",
+    path="/payees/me/account",
     status_code=status.HTTP_200_OK,
 )
 @manage_transaction
@@ -186,3 +187,66 @@ async def get_payee_account_card(
         db_session=db_session,
         user=user,
     )
+
+
+@router.get(
+    path="/customers/me",
+    status_code=status.HTTP_200_OK,
+)
+@manage_transaction
+async def get_customer_account_card(
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    user: Annotated[User, Depends(dependency=admit_user)],
+) -> StripeCustomer:
+    """ """
+    return await payments.get_customer(
+        db_session=db_session,
+        user=user,
+    )
+
+
+@router.post(
+    path="/customers/me/setup-intent",
+    status_code=status.HTTP_201_CREATED,
+)
+@manage_transaction
+async def create_setup_intent(
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    user: Annotated[User, Depends(dependency=admit_user)],
+) -> Any:
+    customer: StripeCustomer = await payments.get_customer(
+        db_session=db_session,
+        user=user,
+    )
+    setup_intent: stripe.SetupIntent = stripe.SetupIntent.create(
+        customer=customer.cus_id,
+        payment_method_types=["card"],
+        usage="off_session",
+    )
+    return {
+        "client_secret": setup_intent.client_secret,
+    }
+
+
+@router.post(
+    path="/customers/me/confirm-payment-method",
+    status_code=status.HTTP_200_OK,
+)
+@manage_transaction
+async def confirm_payment_method(
+    db_session: Annotated[PSQLClient, Depends(dependency=psqlclient)],
+    user: Annotated[User, Depends(dependency=admit_user)],
+    payload: Annotated[dict[str, str], Body(default=...)],
+) -> StripeCustomer:
+    customer: StripeCustomer = await payments.get_customer(
+        db_session=db_session,
+        user=user,
+    )
+    stripe.Customer.modify(
+        customer.cus_id,
+        invoice_settings={
+            "default_payment_method": payload["payment_method"],
+        },
+    )
+    customer.payment_method_id = payload["payment_method"]
+    return customer

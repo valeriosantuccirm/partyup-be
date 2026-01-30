@@ -105,7 +105,7 @@ async def schedule_payment_intent(
             currency=payload.currency,
         ),
         currency=payload.currency,
-        stripe_payee_account_guid=payload.paye_account_guid,
+        stripe_payee_account_guid=payload.payee_account_guid,
         event_guid=event_guid,
     )
     await db_session.add(scheduled_payment)
@@ -302,3 +302,15 @@ async def get_payee_account(
     if not payee_account:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return payee_account
+
+
+async def get_customer(
+    db_session: PSQLClient,
+    user: User,
+) -> StripeCustomer:
+    stripe_customer: StripeCustomer | None = await db_session.find_one_or_none(
+        model=StripeCustomer, criteria=(Column("user_guid") == user.guid,)
+    )
+    if not stripe_customer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return stripe_customer

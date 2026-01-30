@@ -9,8 +9,9 @@ def find_user_events(
     status: EventStatus | None = None,
     limit: int = 10,
     offset: int = 0,
-    source: list[str] = [],
+    source: list[str] | None = None,
 ) -> dict[str, Any]:
+    source = source if source else []
     base_query: dict[str, dict[str, list[dict[str, Any]]]] = {
         "bool": {
             "must": [
@@ -57,8 +58,9 @@ def build_leaderboard_events(
     radius: int = 10,
     limit: int = 10,
     offset: int = 0,
-    source: list[str] = [],
+    source: list[str] | None = None,
 ) -> dict[str, Any]:
+    source = source if source else []
     q: dict[str, Any] = {
         "size": limit,
         "from": offset,
@@ -73,13 +75,13 @@ def build_leaderboard_events(
                                 },
                             }
                         ],
-                        # "must_not": [
-                        #     {
-                        #         "term": {
-                        #             "creator_guid": creator_guid,
-                        #         },
-                        #     }
-                        # ],
+                        "must_not": [
+                            {
+                                "term": {
+                                    "creator_guid": creator_guid,
+                                },
+                            }
+                        ],
                         "should": [
                             {
                                 "multi_match": {
@@ -142,8 +144,9 @@ def search_events(
     radius: int = 10,
     limit: int = 10,
     offset: int = 0,
-    source: list[str] = [],
+    source: list[str] | None = None,
 ) -> dict[str, Any]:
+    source = source if source else []
     q: dict[str, Any] = {
         "size": limit,
         "from": offset,
@@ -169,13 +172,13 @@ def search_events(
                         },
                     },
                 ],
-                # "must_not": [
-                #     {
-                #         "term": {
-                #             "creator_guid": creator_guid,
-                #         },
-                #     },
-                # ],
+                "must_not": [
+                    {
+                        "term": {
+                            "creator_guid": creator_guid,
+                        },
+                    },
+                ],
                 "should": [
                     {
                         "function_score": {
@@ -267,8 +270,9 @@ def search_events(
 def find_event_attendees(
     event_guid: UUID,
     user_guids: list[UUID],
-    source: list[str] = [],
+    source: list[str] | None = None,
 ) -> dict[str, Any]:
+    source = source if source else []
     q: dict[str, Any] = {
         "bool": {
             "must": [

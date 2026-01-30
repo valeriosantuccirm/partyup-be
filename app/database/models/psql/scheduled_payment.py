@@ -2,6 +2,7 @@ from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from pydantic import StrictBool, StrictInt
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
 from app.database.models.enums.scheduled_payment import Currency
@@ -30,4 +31,13 @@ class ScheduledPayment(SQLModel, table=True):
     )
     stripe_payee_account_guid: UUID = Field(
         foreign_key="payee_account.guid", nullable=False, index=True
+    )
+
+    __table_args__: tuple[UniqueConstraint] = (
+        UniqueConstraint(
+            "stripe_payee_account_guid",
+            "stripe_customer_guid",
+            "event_guid",
+            name="uq_cus_payee_event_guid",
+        ),
     )

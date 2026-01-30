@@ -44,6 +44,7 @@ EVENTS_MAPPING: dict[str, dict[str, dict[str, dict[str, str | int]]]] = {
             "creator_popularity_score": {"type": "float"},
             "tags": {"type": "keyword"},
             "hivers_reserved_slots": {"type": "integer"},
+            "payee_account_guid": {"type": "keyword"},
         }
     }
 }

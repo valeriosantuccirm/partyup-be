@@ -10,7 +10,7 @@ def main() -> None:
         accounts: stripe.ListObject[stripe.Account] = stripe.Account.list(
             api_key=STRIPE_SECRET_API_KEY
         )
-        removable = ()
+        removable = ("acct_1Sv2QhK5uGfNoXLz",)
         for r in removable:
             stripe.Account.delete(
                 r,

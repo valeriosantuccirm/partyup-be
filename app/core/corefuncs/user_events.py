@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -22,6 +23,7 @@ from app.database.models.enums.event import (
 )
 from app.database.models.psql.event import Event
 from app.database.models.psql.event_attendee import EventAttendee
+from app.database.models.psql.payee_account import PayeeAccount
 from app.database.models.psql.user import User
 from app.datamodels.schemas.request import (
     EventCreateExtendedRequest,
@@ -57,6 +59,18 @@ async def create_event(
             dirpath="user-profile",
             ext=ext,
         )
+    payee_account_guid: UUID | None = None
+    if event_request.min_donation > 0:
+        payee_account: PayeeAccount | None = await db_session.find_one_or_none(
+            model=PayeeAccount,
+            criteria=(Column("user_guid") == user.guid,),
+        )
+        if not payee_account:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You must set up a ayee account in order to receive payments from users",
+            )
+        payee_account_guid = payee_account.guid
     if event_request.end_date:
         event_request.end_date = event_request.end_date.replace(tzinfo=None)
     new_event = Event(
@@ -72,6 +86,7 @@ async def create_event(
         title=event_request.title,
         creator_guid=user.guid,
         creator_popularity_score=user.popularity_score,
+        payee_account_guid=payee_account_guid,
     )
     await db_session.add(
         instance=new_event,
@@ -327,3 +342,25 @@ async def rsvp_event_participation(
             ),
         )
     )
+
+
+async def get_user_joined_events(
+    db_session: PSQLClient,
+    user: User,
+    status: EventStatus = EventStatus.UPCOMING,
+) -> list[ESEventBase]:
+    attends: Sequence[EventAttendee] = await db_session.get_all(
+        model=EventAttendee,
+        criteria=(Column("user_guid") == user.guid,),
+    )
+    events: Sequence[Event] = await db_session.get_all(
+        model=Event,
+        criteria=(
+            Column("guid").in_(
+                other=[attend.event_guid for attend in attends],
+            ),
+            # Column("status") == status.value, TODO: understand why error. now filter after
+        ),
+    )
+    filtered: filter[Event] = filter(lambda x: x.status == status, events)
+    return [ESEventBase(**dict(f)) for f in filtered]

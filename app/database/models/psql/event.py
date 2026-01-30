@@ -36,6 +36,7 @@ class Event(SQLModel, table=True):
         :location (StrictStr): The location of the event.
         :max_attendees (StrictInt | None): The maximum number of attendees for the event. Defaults to None.
         :min_donation (StrictFloat): The minimum donation required for the event. Defaults to 0.0.
+        :payee_account_guid (UUID | None): The guid of the payee account to receive the donation. Defaults to None.
         :ponr (datetime | None): The date after which it's no longer possible to ask for a refund. Defaults to None.
         :public_attendees_count (StrictInt): The number of public users who join the event. Defaults to 0.
         :start_date (datetime): The start date of the event.
@@ -68,6 +69,7 @@ class Event(SQLModel, table=True):
     )
     max_attendees: StrictInt = Field(default=0, nullable=False)
     min_donation: StrictFloat = Field(default=0.0, nullable=False)
+    payee_account_guid: UUID | None = Field(default=None, nullable=True)
     ponr: datetime | None = Field(default=None, nullable=True)
     public_attendees_count: StrictInt = Field(default=0, nullable=False)
     start_date: datetime = Field(default=..., nullable=False)
