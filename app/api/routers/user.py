@@ -6,12 +6,12 @@ from starlette import status
 
 from app.core.corefuncs import user as userfuncs
 from app.core.decorators import manage_transaction
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.psql.user import User
-from app.database.session import psqlclient
-from app.datamodels.schemas.request import UserRequestBaseModel
-from app.datamodels.schemas.response import UserResponseModel
 from app.depends.depends import get_current_user
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.psql.user import User
+from core.database.session import psqlclient
+from core.datamodels.schemas.request import UserRequestBaseModel
+from core.datamodels.schemas.response import UserResponseModel
 
 router = APIRouter(prefix="/users/me/profile")
 

@@ -22,8 +22,8 @@ from app.api.routers import (
     user_events,
     user_hivers,
 )
-from app.database.redis import redis_client
-from app.database.session import engine
+from core.database.redis import redis_client
+from core.database.session import engine
 
 
 # create tables from models

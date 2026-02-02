@@ -1,0 +1,1 @@
+USER_UPDATE: str = "USER-UPDATE"

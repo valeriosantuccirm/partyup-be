@@ -3,7 +3,7 @@ import os
 
 from google.cloud import pubsub_v1
 
-from consumers.workers.main import handle_pubsub_message
+from cloud_funcs.public_users.main import handle_user_event
 
 PROJECT_ID: str = os.environ["GOOGLE_CLOUD_PROJECT"]
 SUBSCRIPTION_ID: str = os.environ["SUBSCRIPTION_ID"]
@@ -13,7 +13,7 @@ async def callback(message):
     """Funzione asincrona per processare i messaggi Pub/Sub"""
     print(f"📨 Received message: {message.data}")
     try:
-        await handle_pubsub_message(message, {})
+        handle_user_event(message)
         message.ack()
         print("✅ Message processed and acknowledged")
     except Exception as e:

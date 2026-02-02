@@ -12,18 +12,18 @@ from firebase_admin._user_mgt import (
 from sqlalchemy import Column
 from starlette import status
 
-from app.config import ph, redis, settings
 from app.core import common as coreutils
 from app.core.email import Email
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.enums.common import OAuthProvider
-from app.database.models.enums.user import UserInfoStatus
-from app.database.models.psql.user import User
-from app.datamodels.schemas.auth import FCMToken, FirebaseUser, Token
-from app.datamodels.schemas.request import UserCreateBase
-from app.pubsub.public_users.enums import PublicUsersPubSubEvent
-from app.pubsub.public_users.schemas import UserCreatePubSubMsg
-from app.pubsub.publisher import Publisher
+from core.config import ph, redis, settings
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.enums.common import OAuthProvider
+from core.database.models.enums.user import UserInfoStatus
+from core.database.models.psql.user import User
+from core.datamodels.schemas.auth import FCMToken, FirebaseUser, Token
+from core.datamodels.schemas.request import UserCreateBase
+from core.pubsub.public_users.enums import PublicUsersPubSubEvent
+from core.pubsub.public_users.schemas import UserCreatePubSubMsg
+from core.pubsub.publisher import Publisher
 
 
 async def signup_user_by_email(

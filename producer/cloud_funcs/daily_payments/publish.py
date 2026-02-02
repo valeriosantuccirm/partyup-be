@@ -3,8 +3,8 @@ from typing import Any
 
 from google.cloud import pubsub_v1  # pyright: ignore[reportMissingTypeStubs]
 
-from app.config import settings
-from app.configlog import logger
+from core.config import settings
+from core.logger import logger
 from producer.enums.topics import GCPTopics
 
 

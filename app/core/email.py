@@ -3,7 +3,7 @@ from fastapi_mail import FastMail, MessageSchema, MessageType
 from firebase_admin import auth
 from jinja2.environment import Template
 
-from app.config import emailconfig, emailenv
+from core.config import emailconfig, emailenv
 
 
 class Email:

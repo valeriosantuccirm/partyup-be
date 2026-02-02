@@ -6,14 +6,14 @@ from starlette import status
 
 from app.core.corefuncs import user_hivers
 from app.core.decorators import manage_transaction
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.elasticsearch.es_hiver_request import ESHiverRequest
-from app.database.models.enums.hiver import HiverRequestStatus
-from app.database.models.psql.user import User
-from app.database.session import esclient, psqlclient
-from app.datamodels.schemas.response import PaginatedListedUser
 from app.depends.depends import admit_user
+from core.database.crud.elasticsearch.esclient import ElasticsearchClient
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.elasticsearch.es_hiver_request import ESHiverRequest
+from core.database.models.enums.hiver import HiverRequestStatus
+from core.database.models.psql.user import User
+from core.database.session import esclient, psqlclient
+from core.datamodels.schemas.response import PaginatedListedUser
 
 router = APIRouter(prefix="/users/me/hivers")
 

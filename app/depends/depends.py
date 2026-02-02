@@ -13,15 +13,15 @@ from firebase_admin._user_mgt import (
 from sqlalchemy import Column
 from starlette import status
 
-from app.config import redis
 from app.core import common
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.enums.event import EventAttendeeStatus
-from app.database.models.psql.event_attendee import EventAttendee
-from app.database.models.psql.user import User
-from app.database.redis import RedisClient, redis_client
-from app.database.session import psqlclient
-from app.datamodels.schemas.auth import FirebaseUser
+from core.config import redis
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.enums.event import EventAttendeeStatus
+from core.database.models.psql.event_attendee import EventAttendee
+from core.database.models.psql.user import User
+from core.database.redis import RedisClient, redis_client
+from core.database.session import psqlclient
+from core.datamodels.schemas.auth import FirebaseUser
 
 security = HTTPBearer()
 

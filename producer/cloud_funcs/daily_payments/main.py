@@ -17,7 +17,7 @@ class TriggerResponse(BaseModel):
 
 
 @app.get(
-    "/",
+    path="/",
     response_model=TriggerResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
@@ -38,7 +38,7 @@ async def trigger_daily_payments() -> TriggerResponse:
 
 
 @app.get(
-    "/health",
+    path="/health",
     status_code=status.HTTP_200_OK,
 )
 async def health_check() -> dict[str, str]:

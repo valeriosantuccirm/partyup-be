@@ -8,14 +8,14 @@ from starlette import status
 
 from app.core.corefuncs import events
 from app.core.decorators import manage_transaction
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.enums.event import EventStatus
-from app.database.models.psql.media import Media
-from app.database.models.psql.user import User
-from app.database.session import esclient, psqlclient
-from app.datamodels.schemas.response import PaginatedEvents
 from app.depends.depends import admit_user, get_attendee
+from core.database.crud.elasticsearch.esclient import ElasticsearchClient
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.enums.event import EventStatus
+from core.database.models.psql.media import Media
+from core.database.models.psql.user import User
+from core.database.session import esclient, psqlclient
+from core.datamodels.schemas.response import PaginatedEvents
 
 router = APIRouter(prefix="/events")
 

@@ -6,13 +6,13 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy import Column, ColumnElement
 from starlette import status
 
-from app.config import settings
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.elasticsearch.queries import common_q
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.elasticsearch.es_event import ESEvent
-from app.database.models.psql.event import Event
-from app.database.models.psql.user import User
+from core.config import settings
+from core.database.crud.elasticsearch.esclient import ElasticsearchClient
+from core.database.crud.elasticsearch.queries import common_q
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.elasticsearch.es_event import ESEvent
+from core.database.models.psql.event import Event
+from core.database.models.psql.user import User
 
 
 async def is_user_unique_params_already_assigned(

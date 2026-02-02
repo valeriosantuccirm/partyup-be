@@ -14,8 +14,8 @@ from redis.asyncio.client import PubSub
 from starlette import status
 
 from app.core.decorators import manage_transaction
-from app.database.redis import RedisClient
 from app.depends.depends import get_redis_client
+from core.database.redis import RedisClient
 
 wsrouter = APIRouter(prefix="/ws/stream/events")
 

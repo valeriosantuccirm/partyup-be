@@ -5,22 +5,22 @@ from fastapi import HTTPException
 from sqlalchemy import Column
 from starlette import status
 
-from app.config import settings
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.elasticsearch.queries import users_q
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.elasticsearch.es_hiver_request import ESHiverRequest
-from app.database.models.elasticsearch.es_user_hiver import (
+from core.config import settings
+from core.database.crud.elasticsearch.esclient import ElasticsearchClient
+from core.database.crud.elasticsearch.queries import users_q
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.elasticsearch.es_hiver_request import ESHiverRequest
+from core.database.models.elasticsearch.es_user_hiver import (
     ESUserHiverRelations,
 )
-from app.database.models.enums.hiver import HiverRequestStatus
-from app.database.models.psql.hiver_request import HiverRequest
-from app.database.models.psql.user import User
-from app.database.models.psql.user_hiver import UserHiver
-from app.datamodels.schemas.response import ESListedUser, PaginatedListedUser
-from app.pubsub.hivers.enums import HiversPubSubEvent
-from app.pubsub.hivers.schemas import HiverReqRespPubSubBaseData, HiverReqRespPubSubMsg
-from app.pubsub.publisher import Publisher
+from core.database.models.enums.hiver import HiverRequestStatus
+from core.database.models.psql.hiver_request import HiverRequest
+from core.database.models.psql.user import User
+from core.database.models.psql.user_hiver import UserHiver
+from core.datamodels.schemas.response import ESListedUser, PaginatedListedUser
+from core.pubsub.hivers.enums import HiversPubSubEvent
+from core.pubsub.hivers.schemas import HiverReqRespPubSubBaseData, HiverReqRespPubSubMsg
+from core.pubsub.publisher import Publisher
 
 
 async def get_user_hiver_requests(

@@ -7,31 +7,31 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy import Column
 from starlette import status
 
-from app.config import settings
 from app.core import common
 from app.core.common import upload_content_to_s3
 from app.core.corefuncs import user_hivers
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.elasticsearch.queries import events_q
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.elasticsearch.es_event import ESEvent, ESEventBase
-from app.database.models.elasticsearch.es_event_attendee import ESEventAttendee
-from app.database.models.enums.event import (
+from core.config import settings
+from core.database.crud.elasticsearch.esclient import ElasticsearchClient
+from core.database.crud.elasticsearch.queries import events_q
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.elasticsearch.es_event import ESEvent, ESEventBase
+from core.database.models.elasticsearch.es_event_attendee import ESEventAttendee
+from core.database.models.enums.event import (
     AttendeeType,
     EventAttendeeStatus,
     EventStatus,
 )
-from app.database.models.psql.event import Event
-from app.database.models.psql.event_attendee import EventAttendee
-from app.database.models.psql.payee_account import PayeeAccount
-from app.database.models.psql.user import User
-from app.datamodels.schemas.request import (
+from core.database.models.psql.event import Event
+from core.database.models.psql.event_attendee import EventAttendee
+from core.database.models.psql.payee_account import PayeeAccount
+from core.database.models.psql.user import User
+from core.datamodels.schemas.request import (
     EventCreateExtendedRequest,
     UserEventUpdateExtendedRequest,
 )
-from app.datamodels.schemas.response import PaginatedListedUser
-from app.pubsub.events.enums import EventsPubSubEvent
-from app.pubsub.events.schemas import (
+from core.datamodels.schemas.response import PaginatedListedUser
+from core.pubsub.events.enums import EventsPubSubEvent
+from core.pubsub.events.schemas import (
     EventCancelPubSubBaseData,
     EventCancelPubSubPubSubMsg,
     EventInvitePubSubBaseData,
@@ -39,7 +39,7 @@ from app.pubsub.events.schemas import (
     EventRSVPPubSubBaseData,
     EventRSVPPubSubPubSubMsg,
 )
-from app.pubsub.publisher import Publisher
+from core.pubsub.publisher import Publisher
 
 
 async def create_event(

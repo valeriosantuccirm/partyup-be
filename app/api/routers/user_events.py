@@ -9,20 +9,20 @@ from starlette import status
 
 from app.core.corefuncs import user_events
 from app.core.decorators import manage_transaction
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.elasticsearch.es_event import ESEvent, ESEventBase
-from app.database.models.enums.event import EventStatus
-from app.database.models.psql.event import Event
-from app.database.models.psql.user import User
-from app.database.session import esclient, psqlclient
-from app.datamodels.schemas.request import (
+from app.depends.depends import admit_user
+from core.database.crud.elasticsearch.esclient import ElasticsearchClient
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.elasticsearch.es_event import ESEvent, ESEventBase
+from core.database.models.enums.event import EventStatus
+from core.database.models.psql.event import Event
+from core.database.models.psql.user import User
+from core.database.session import esclient, psqlclient
+from core.datamodels.schemas.request import (
     EventCreateExtendedRequest,
     EventCreateRequest,
     UserEventUpdateExtendedRequest,
     UserEventUpdateRequest,
 )
-from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/users/me/events")
 

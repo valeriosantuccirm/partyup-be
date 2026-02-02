@@ -7,18 +7,18 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import Column
 from starlette import status
 
-from app.config import settings
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.enums.payee_account import CountryCode, PayeeAccountStatus
-from app.database.models.psql.payee_account import PayeeAccount
-from app.database.models.psql.payment_intent import PaymentIntent
-from app.database.models.psql.scheduled_payment import ScheduledPayment
-from app.database.models.psql.stripe_customer import StripeCustomer
-from app.database.models.psql.user import User
-from app.datamodels.schemas.auth import FirebaseUser
-from app.datamodels.schemas.request import ScheduledPaymentRequest
-from app.datamodels.utils import to_stripe_amount_cents
 from app.depends.depends import get_firebase_user
+from core.config import settings
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.enums.payee_account import CountryCode, PayeeAccountStatus
+from core.database.models.psql.payee_account import PayeeAccount
+from core.database.models.psql.payment_intent import PaymentIntent
+from core.database.models.psql.scheduled_payment import ScheduledPayment
+from core.database.models.psql.stripe_customer import StripeCustomer
+from core.database.models.psql.user import User
+from core.datamodels.schemas.auth import FirebaseUser
+from core.datamodels.schemas.request import ScheduledPaymentRequest
+from core.datamodels.utils import to_stripe_amount_cents
 
 
 async def create_stripe_customer(

@@ -6,7 +6,7 @@ from starlette import status
 
 from app.core.corefuncs import maps
 from app.core.decorators import manage_transaction
-from app.datamodels.schemas.response import MapsLocation
+from core.datamodels.schemas.response import MapsLocation
 
 router = APIRouter(prefix="/locations")
 

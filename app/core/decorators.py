@@ -13,11 +13,11 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from app.config import redis
-from app.configlog import logger
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.psql.user import User
-from app.datamodels.schemas.response import UserResponseModel
+from core.config import redis
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.psql.user import User
+from core.datamodels.schemas.response import UserResponseModel
+from core.logger import logger
 
 CONN = "session"
 CONN_VARS: tuple[Literal["session"], Literal["_"]] = ("session", "_")

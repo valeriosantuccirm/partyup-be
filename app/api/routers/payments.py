@@ -7,18 +7,18 @@ from starlette import status
 
 from app.core.corefuncs import payments
 from app.core.decorators import manage_transaction
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.enums.payee_account import PayeeAccountStatus
-from app.database.models.psql.payee_account import PayeeAccount
-from app.database.models.psql.scheduled_payment import ScheduledPayment
-from app.database.models.psql.stripe_customer import StripeCustomer
-from app.database.models.psql.user import User
-from app.database.session import psqlclient
-from app.datamodels.schemas.request import (
+from app.depends.depends import admit_user
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.enums.payee_account import PayeeAccountStatus
+from core.database.models.psql.payee_account import PayeeAccount
+from core.database.models.psql.scheduled_payment import ScheduledPayment
+from core.database.models.psql.stripe_customer import StripeCustomer
+from core.database.models.psql.user import User
+from core.database.session import psqlclient
+from core.datamodels.schemas.request import (
     OnboardingRequestBody,
     ScheduledPaymentRequest,
 )
-from app.depends.depends import admit_user
 
 router = APIRouter(prefix="/payments")
 

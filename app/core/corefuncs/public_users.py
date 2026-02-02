@@ -5,20 +5,21 @@ from fastapi import HTTPException
 from sqlalchemy import Column
 from starlette import status
 
-from app.config import settings
-from app.core import common, fcm
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.elasticsearch.queries import users_q
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.elasticsearch.es_hiver_request import ESHiverRequestBase
-from app.database.models.elasticsearch.es_user import ESUser
-from app.database.models.enums.hiver import HiverRequestStatus
-from app.database.models.psql.hiver_request import HiverRequest
-from app.database.models.psql.user import User
-from app.database.models.psql.user_follower import UserFollower
-from app.datamodels.schemas.response import ESListedUser, PaginatedListedUser
-from app.pubsub.public_users.enums import PublicUsersPubSubEvent
-from app.pubsub.public_users.schemas import (
+from app.core import common
+from core import fcm
+from core.config import settings
+from core.database.crud.elasticsearch.esclient import ElasticsearchClient
+from core.database.crud.elasticsearch.queries import users_q
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.elasticsearch.es_hiver_request import ESHiverRequestBase
+from core.database.models.elasticsearch.es_user import ESUser
+from core.database.models.enums.hiver import HiverRequestStatus
+from core.database.models.psql.hiver_request import HiverRequest
+from core.database.models.psql.user import User
+from core.database.models.psql.user_follower import UserFollower
+from core.datamodels.schemas.response import ESListedUser, PaginatedListedUser
+from core.pubsub.public_users.enums import PublicUsersPubSubEvent
+from core.pubsub.public_users.schemas import (
     FollowUserBaseMsgData,
     FollowUserPubSubMsg,
     HiverRequestSendBaseMsgData,
@@ -26,7 +27,7 @@ from app.pubsub.public_users.schemas import (
     UnfollowUserBaseMsgbData,
     UnfollowUserPubSubMsg,
 )
-from app.pubsub.publisher import Publisher
+from core.pubsub.publisher import Publisher
 
 
 async def search_accounts(

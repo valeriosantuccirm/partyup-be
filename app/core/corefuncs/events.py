@@ -7,35 +7,35 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy import Column
 from starlette import status
 
-from app.config import settings
 from app.core import common
-from app.database.crud.elasticsearch.esclient import ElasticsearchClient
-from app.database.crud.elasticsearch.queries import events_q
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.elasticsearch.es_event import ESEvent
-from app.database.models.elasticsearch.es_media import ESMediaBase
-from app.database.models.enums.event import (
+from cloud_funcs.payments.src.schema.qr_data import QRData
+from core.config import settings
+from core.database.crud.elasticsearch.esclient import ElasticsearchClient
+from core.database.crud.elasticsearch.queries import events_q
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.elasticsearch.es_event import ESEvent
+from core.database.models.elasticsearch.es_media import ESMediaBase
+from core.database.models.enums.event import (
     AttendeeType,
     EventAttendeeStatus,
     EventStatus,
 )
-from app.database.models.enums.media import MediaType
-from app.database.models.psql.event import Event
-from app.database.models.psql.event_attendee import EventAttendee
-from app.database.models.psql.media import Media
-from app.database.models.psql.qr_ticket import QRTicket
-from app.database.models.psql.user import User
-from app.database.models.psql.user_follower import UserFollower
-from app.datamodels.schemas.response import PaginatedEvents
-from app.pubsub.public_events.enums import PublicEventsPubSubEvent
-from app.pubsub.public_events.schemas import (
+from core.database.models.enums.media import MediaType
+from core.database.models.psql.event import Event
+from core.database.models.psql.event_attendee import EventAttendee
+from core.database.models.psql.media import Media
+from core.database.models.psql.qr_ticket import QRTicket
+from core.database.models.psql.user import User
+from core.database.models.psql.user_follower import UserFollower
+from core.datamodels.schemas.response import PaginatedEvents
+from core.pubsub.public_events.enums import PublicEventsPubSubEvent
+from core.pubsub.public_events.schemas import (
     PublicEventJoinPubSubBaseData,
     PublicEventJoinPubSubMsg,
     PublicEventRevokePubSubMsg,
     PublicEventRevokePubSubMsgBaseData,
 )
-from app.pubsub.publisher import Publisher
-from jobs.payments.src.schema.qr_data import QRData
+from core.pubsub.publisher import Publisher
 
 
 async def get_leaderboard_events(

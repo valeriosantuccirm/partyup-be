@@ -15,6 +15,7 @@ dependencies = [
     "fastapi>=0.128.0",
     "fastapi-mail>=1.6.1",
     "firebase-admin>=7.1.0",
+    "functions-framework>=3.10.0",
     "geoalchemy2>=0.18.1",
     "google-cloud-logging>=3.13.0",
     "google-cloud-pubsub>=2.34.0",

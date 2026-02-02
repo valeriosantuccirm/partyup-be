@@ -1,7 +1,7 @@
 from typing import Any
 
 from app.core import common
-from app.datamodels.schemas.response import MapsLocation
+from core.datamodels.schemas.response import MapsLocation
 
 
 async def search_location(

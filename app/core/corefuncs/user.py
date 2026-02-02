@@ -5,19 +5,19 @@ from fastapi import HTTPException
 from sqlalchemy import ColumnElement
 from starlette import status
 
-from app.config import settings
 from app.core.common import (
     are_user_info_complete,
     is_user_unique_params_already_assigned,
 )
-from app.database.crud.psql.psqlclient import PSQLClient
-from app.database.models.elasticsearch.es_user import ESUserBase
-from app.database.models.enums.user import UserInfoStatus
-from app.database.models.psql.user import User
-from app.datamodels.schemas.request import UserRequestBaseModel
-from app.pubsub.public_users.enums import PublicUsersPubSubEvent
-from app.pubsub.public_users.schemas import UserCreatePubSubMsg
-from app.pubsub.publisher import Publisher
+from core.config import settings
+from core.database.crud.psql.psqlclient import PSQLClient
+from core.database.models.elasticsearch.es_user import ESUserBase
+from core.database.models.enums.user import UserInfoStatus
+from core.database.models.psql.user import User
+from core.datamodels.schemas.request import UserRequestBaseModel
+from core.pubsub.public_users.enums import PublicUsersPubSubEvent
+from core.pubsub.public_users.schemas import UserCreatePubSubMsg
+from core.pubsub.publisher import Publisher
 
 
 async def deactivate_account(
